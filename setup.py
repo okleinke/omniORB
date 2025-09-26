@@ -28,8 +28,8 @@ setup_args = dict(
 
     packages=setuptools.find_packages(where=python_dir),  # ['omniORB', 'COS'],
     package_dir={'': python_dir},
-    # package_data={"omniORB": [r"omniORB\bin\x86_win32\omniORB423_vc14_rt.dll"]},
-    data_files=[("lib\\site-packages", [r"omniORB\bin\x86_win32\omniORB423_vc14_rt.dll", r"omniORB\bin\x86_win32\omnithread41_vc14_rt.dll"])],
+    # package_data={"omniORB": [r"omniORB\bin\x86_win32\omniORB433_vc17_rt.dll"]},
+    data_files=[("lib\\site-packages", [r"omniORB\bin\x86_win32\omniORB433_vc17_rt.dll", r"omniORB\bin\x86_win32\omnithread43_vc17_rt.dll"])],
 
 )
 

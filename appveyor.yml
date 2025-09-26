@@ -43,14 +43,14 @@ build_script:
   - cmd: 'cd omniORB'
   - cmd: 'set PATH=%PATH%;%CD%\bin\x86_win32'
 
-  # doesn't work: - 'echo platform = x86_win32_vs_14>>config\config.mk'
-  - cmd: 'sed -i "s/.*Uncomment one of the following platform lines.*/platform = x86_win32_vs_14/" config/config.mk'
-  - cmd: 'echo PYTHON = /cygdrive/c/%PYTHON%/python>>mk\platforms\x86_win32_vs_14.mk'
+  # doesn't work: - 'echo platform = x86_win32_vs_17>>config\config.mk'
+  - cmd: 'sed -i "s/.*Uncomment one of the following platform lines.*/platform = x86_win32_vs_17/" config/config.mk'
+  - cmd: 'echo PYTHON = /cygdrive/c/%PYTHON%/python>>mk\platforms\x86_win32_vs_17.mk'
 
 # install cygwin make
-  - cmd: '"C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" %BUILD_ARCH%'
+  - cmd: '"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" %BUILD_ARCH%'
   - cmd: 'set path=%path%;c:\cygwin\bin;c:\%PYTHON%'
-  - cmd: 'set path=c:\Program Files (x86)\Windows Kits\10\bin\10.0.18362.0\x86;c:\Program Files (x86)\Windows Kits\10\bin\10.0.17134.0\x86\;%PATH%'
+  - cmd: 'set path=c:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x86;%PATH%'
   - cmd: 'cd src'
   - cmd: 'make export'
   - cmd: 'cd lib\omniORBpy'
