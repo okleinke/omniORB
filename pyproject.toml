@@ -6,6 +6,7 @@ build-backend = "scikit_build_core.build"
 name = "omniorb"
 version = "4.2.3"
 description = "Python bindings for omniORB"
+readme = "README.md"
 requires-python = ">= 3.7"
 authors = [
     { name = "Duncan Grisby et al", email = "duncan@grisby.org" },
