@@ -117,16 +117,21 @@ omniORB::logger::logger(const char* prefix)
     if (self)
       *this << "(" << self->id() << ") ";
     else
-      *this << "(?) ";
+      *this << "(? " << omni_thread::plat_id() << ") ";
   }
 
-#if defined(HAVE_STRFTIME) && defined(HAVE_LOCALTIME)
+#if defined(OMNI_HAVE_STRFTIME) && defined(OMNI_HAVE_LOCALTIME)
   if (omniORB::traceTime) {
     char tbuf[40];
     unsigned long s, ns;
     omni_thread::get_time(&s, &ns);
     time_t ts = s;
+#if defined(OMNI_HAVE_LOCALTIME_R)
+    struct tm tmr;
+    strftime(tbuf, 39, "%Y-%m-%d %H:%M:%S", localtime_r(&ts, &tmr));
+#else
     strftime(tbuf, 39, "%Y-%m-%d %H:%M:%S", localtime(&ts));
+#endif
     *this << tbuf;
     sprintf(tbuf, ".%06d: ", (int)ns / 1000);
     *this << tbuf;
@@ -169,6 +174,31 @@ omniORB::logger::operator<<(const char *s)
   reserve(len);
   strcpy(pd_p, s);
   pd_p += len;
+  return *this;
+}
+
+
+omniORB::logger&
+omniORB::logger::operator<<(const omniORB::logger::unsafe& us)
+{
+  const char* s = us.s;
+  if (!s) s = "(null)";
+
+  size_t len = 0;
+  for (const char* t = s; *t; ++t)
+    len += isprint(*t) ? 1 : 4;
+  
+  reserve(len);
+
+  for (; *s; ++s) {
+    if (isprint(*s)) {
+      *pd_p++ = *s;
+    }
+    else {
+      sprintf(pd_p, "\\x%02x", *s);
+      pd_p += 4;
+    }
+  }
   return *this;
 }
 
@@ -222,8 +252,31 @@ omniORB::logger::operator<<(unsigned long n)
   return *this;
 }
 
+#if defined(_MSC_VER) && defined(_WIN64)
 
-#ifndef NO_FLOAT
+omniORB::logger&
+omniORB::logger::operator<<(__int64 n)
+{
+  reserve(30);
+  sprintf(pd_p, "%I64d", n);
+  pd_p += strlen(pd_p);
+  return *this;
+}
+
+
+omniORB::logger&
+omniORB::logger::operator<<(unsigned __int64 n)
+{
+  reserve(30);
+  sprintf(pd_p, "%I64u", n);
+  pd_p += strlen(pd_p);
+  return *this;
+}
+
+#endif
+
+
+#ifndef OMNI_NO_FLOAT
 omniORB::logger&
 omniORB::logger::operator<<(double n)
 {
@@ -389,7 +442,7 @@ omniORB::do_logs(const char* mesg)
   char* buf = inlinebuf;
   size_t fmtlen = strlen(mesg) + sizeof(PREFIX) + 15;
 
-#if defined(HAVE_STRFTIME) && defined(HAVE_LOCALTIME)
+#if defined(OMNI_HAVE_STRFTIME) && defined(OMNI_HAVE_LOCALTIME)
   if (traceTime)
     fmtlen += 30;
 #endif
@@ -405,16 +458,22 @@ omniORB::do_logs(const char* mesg)
     if (self)
       cbuf += sprintf(cbuf, "(%d) ", self->id());
     else
-      cbuf += sprintf(cbuf, "(?) ");
+      cbuf += sprintf(cbuf, "(? %lu) ", omni_thread::plat_id());
   }
 
-#if defined(HAVE_STRFTIME) && defined(HAVE_LOCALTIME)
+#if defined(OMNI_HAVE_STRFTIME) && defined(OMNI_HAVE_LOCALTIME)
   if (traceTime) {
     unsigned long s, ns;
     omni_thread::get_time(&s, &ns);
     time_t ts = s;
+#if defined(OMNI_HAVE_LOCALTIME_R)
+    struct tm tmr;
+    cbuf += strftime(cbuf, fmtlen - (cbuf-buf),
+		     "%Y-%m-%d %H:%M:%S", localtime_r(&ts, &tmr));
+#else
     cbuf += strftime(cbuf, fmtlen - (cbuf-buf),
 		     "%Y-%m-%d %H:%M:%S", localtime(&ts));
+#endif
     cbuf += sprintf(cbuf, ".%06d: ", (int)ns / 1000);
   }
 #endif

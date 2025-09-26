@@ -50,7 +50,7 @@
 #include <omniIdentity.h>
 #include <SocketCollection.h>
 
-#ifdef HAVE_SIGNAL_H
+#ifdef OMNI_HAVE_SIGNAL_H
 #  include <signal.h>
 #  include <errno.h>
 #endif
@@ -309,31 +309,65 @@ CORBA::ORB_init(int& argc, char** argv, const char* orb_identifier,
     // Call attach method of each initialiser object.
     // The order of these calls must take into account of the dependency
     // among the modules.
-    omni_giopEndpoint_initialiser_.attach();
-    omni_transportRules_initialiser_.attach();
-    omni_interceptor_initialiser_.attach();
-    omni_omniInternal_initialiser_.attach();
-    omni_corbaOrb_initialiser_.attach();
-    omni_objadpt_initialiser_.attach();
-    omni_giopStreamImpl_initialiser_.attach();
-    omni_omniIOR_initialiser_.attach();
-    omni_ior_initialiser_.attach();
-    omni_codeSet_initialiser_.attach();
-    omni_cdrStream_initialiser_.attach();
-    omni_omniTransport_initialiser_.attach();
-    omni_giopRope_initialiser_.attach();
-    omni_giopserver_initialiser_.attach();
-    omni_giopbidir_initialiser_.attach();
-    omni_giopStrand_initialiser_.attach();
-    omni_omniCurrent_initialiser_.attach();
-    omni_dynamiclib_initialiser_.attach();
-    omni_ObjRef_initialiser_.attach();
-    omni_initRefs_initialiser_.attach();
-    omni_orbOptions_initialiser_.attach();
-    omni_poa_initialiser_.attach();
-    omni_uri_initialiser_.attach();
-    omni_invoker_initialiser_.attach();
-    omni_hooked_initialiser_.attach();
+    int i=0;
+
+    try {
+      omni_giopEndpoint_initialiser_.attach();    i++;
+      omni_transportRules_initialiser_.attach();  i++;
+      omni_interceptor_initialiser_.attach();     i++;
+      omni_omniInternal_initialiser_.attach();    i++;
+      omni_corbaOrb_initialiser_.attach();        i++;
+      omni_objadpt_initialiser_.attach();         i++;
+      omni_giopStreamImpl_initialiser_.attach();  i++;
+      omni_omniIOR_initialiser_.attach();         i++;
+      omni_ior_initialiser_.attach();             i++;
+      omni_codeSet_initialiser_.attach();         i++;
+      omni_cdrStream_initialiser_.attach();       i++;
+      omni_omniTransport_initialiser_.attach();   i++;
+      omni_giopRope_initialiser_.attach();        i++;
+      omni_giopserver_initialiser_.attach();      i++;
+      omni_giopbidir_initialiser_.attach();       i++;
+      omni_giopStrand_initialiser_.attach();      i++;
+      omni_omniCurrent_initialiser_.attach();     i++;
+      omni_dynamiclib_initialiser_.attach();      i++;
+      omni_ObjRef_initialiser_.attach();          i++;
+      omni_initRefs_initialiser_.attach();        i++;
+      omni_orbOptions_initialiser_.attach();      i++;
+      omni_poa_initialiser_.attach();             i++;
+      omni_uri_initialiser_.attach();             i++;
+      omni_invoker_initialiser_.attach();         i++;
+      omni_hooked_initialiser_.attach();          i++;
+    }
+    catch (...) {
+      switch (i) {
+      case 25: omni_hooked_initialiser_.detach();
+      case 24: omni_invoker_initialiser_.detach();
+      case 23: omni_uri_initialiser_.detach();
+      case 22: omni_poa_initialiser_.detach();
+      case 21: omni_orbOptions_initialiser_.detach();
+      case 20: omni_initRefs_initialiser_.detach();
+      case 19: omni_ObjRef_initialiser_.detach();
+      case 18: omni_dynamiclib_initialiser_.detach();
+      case 17: omni_omniCurrent_initialiser_.detach();
+      case 16: omni_giopStrand_initialiser_.detach();
+      case 15: omni_giopbidir_initialiser_.detach();
+      case 14: omni_giopserver_initialiser_.detach();
+      case 13: omni_giopRope_initialiser_.detach();
+      case 12: omni_omniTransport_initialiser_.detach();
+      case 11: omni_cdrStream_initialiser_.detach();
+      case 10: omni_codeSet_initialiser_.detach();
+      case  9: omni_ior_initialiser_.detach();
+      case  8: omni_omniIOR_initialiser_.detach();
+      case  7: omni_giopStreamImpl_initialiser_.detach();
+      case  6: omni_objadpt_initialiser_.detach();
+      case  5: omni_corbaOrb_initialiser_.detach();
+      case  4: omni_omniInternal_initialiser_.detach();
+      case  3: omni_interceptor_initialiser_.detach();
+      case  2: omni_transportRules_initialiser_.detach();
+      case  1: omni_giopEndpoint_initialiser_.detach();
+      };
+      throw;
+    }
 
     if (orbParameters::lcdMode) {
       enableLcdMode();
@@ -377,11 +411,13 @@ CORBA::ORB_init(int& argc, char** argv, const char* orb_identifier,
 //////////////////////////////////////////////////////////////////////
 
 #define CHECK_NOT_NIL_SHUTDOWN_OR_DESTROYED()  \
-  if( _NP_is_nil() )  _CORBA_invoked_nil_pseudo_ref();  \
-  if( pd_destroyed )  OMNIORB_THROW(OBJECT_NOT_EXIST,OBJECT_NOT_EXIST_NoMatch, CORBA::COMPLETED_NO);  \
-  if( pd_shutdown  )  OMNIORB_THROW(BAD_INV_ORDER, \
-                                    BAD_INV_ORDER_ORBHasShutdown, \
-                                    CORBA::COMPLETED_NO);  \
+  do { \
+    if( _NP_is_nil() )  _CORBA_invoked_nil_pseudo_ref(); \
+    if( pd_destroyed )  OMNIORB_THROW(OBJECT_NOT_EXIST,OBJECT_NOT_EXIST_NoMatch, CORBA::COMPLETED_NO); \
+    if( pd_shutdown  )  OMNIORB_THROW(BAD_INV_ORDER, \
+                                      BAD_INV_ORDER_ORBHasShutdown, \
+                                      CORBA::COMPLETED_NO); \
+  } while(0)
 
 CORBA::Boolean
 omniOrbORB::all_destroyed()
@@ -847,11 +883,25 @@ static omnivector<omniInitialiser*>*& the_hooked_list()
 class omni_hooked_initialiser : public omniInitialiser {
 public:
   void attach() {
-    omnivector<omniInitialiser*>::iterator i    = the_hooked_list()->begin();
-    omnivector<omniInitialiser*>::iterator last = the_hooked_list()->end();
+    omnivector<omniInitialiser*>::iterator first = the_hooked_list()->begin();
+    omnivector<omniInitialiser*>::iterator last  = the_hooked_list()->end();
+    omnivector<omniInitialiser*>::iterator i;
 
-    for (; i != last; i++) {
-      (*i)->attach();
+    try {
+      for (i=first; i != last; i++) {
+        (*i)->attach();
+      }
+    }
+    catch (...) {
+      if (i != first) {
+        while (1) {
+          --i;
+          (*i)->detach();
+          if (i == first)
+            break;
+        }
+      }
+      throw;
     }
   }
 
@@ -915,7 +965,7 @@ public:
 			1) {}
 
 
-  void visit(const char*,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char*,orbOptions::Source) {
 
     orbOptions::sequenceString_var usage;
     usage = orbOptions::singleton().usageArgv();
@@ -945,7 +995,7 @@ public:
 			"-ORBid " ORB_ID_STRING " (standard option)") {}
 
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     if (!isValidId(value)) {
       throw orbOptions::BadParam(key(),value,"id is not " ORB_ID_STRING);
@@ -977,7 +1027,7 @@ public:
 			"-ORBdumpConfiguration < 0 | 1 >") {}
 
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::Boolean v;
     if (!orbOptions::getBoolean(value,v)) {
@@ -1006,7 +1056,7 @@ public:
 			"-ORBlcdMode < 0 | 1 >") {}
 
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::Boolean v;
     if (!orbOptions::getBoolean(value,v)) {
@@ -1036,7 +1086,7 @@ public:
 			"-ORBprincipal <GIOP 1.0 principal string>") {}
 
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
     CORBA::ULong l = (CORBA::ULong)strlen(value) + 1;
     omni::myPrincipalID.length(l);
     for (CORBA::ULong i = 0; i < l; i++)
@@ -1071,7 +1121,7 @@ public:
 			"-ORBconfigFile <filename>") {}
 
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
     // Do nothing -- already handled before normal arguments are processed
   }
 
@@ -1103,11 +1153,11 @@ public:
   void attach() {
 
 #if !defined(__CIAO__)
-# if defined(HAVE_SIGACTION)
+# if defined(OMNI_HAVE_SIGACTION)
 
     struct sigaction act;
     sigemptyset(&act.sa_mask);
-#  ifdef HAVE_SIG_IGN
+#  ifdef OMNI_HAVE_SIG_IGN
     act.sa_handler = SIG_IGN;
 #  else
     act.sa_handler = (void (*)())0;
@@ -1120,7 +1170,7 @@ public:
 	  "SIG_IGN handler for signal SIGPIPE. (errno = " << errno << ")\n";
       }
     }
-# elif defined(HAVE_SIGVEC)
+# elif defined(OMNI_HAVE_SIGVEC)
     struct sigvec act;
     act.sv_mask = 0;
     act.sv_handler = SIG_IGN;
@@ -1132,7 +1182,7 @@ public:
 	  "SIG_IGN handler for signal SIGPIPE. (errno = " << errno << ")\n";
       }
     }
-# endif // HAVE_SIGACTION
+# endif // OMNI_HAVE_SIGACTION
 #endif // __CIAO__
 
     orbAsyncInvoker = new omniAsyncInvoker();

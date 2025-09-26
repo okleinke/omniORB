@@ -72,6 +72,7 @@ char	*directives[] = {
 	"line",
 	"pragma",
 	"error",
+	"warning",
 	"ident",
 	"sccs",
 	"elif",
@@ -104,8 +105,7 @@ int
 #else
 void
 #endif
-catch (sig)
-    int sig;
+catch (int sig)
 {
 	fflush (stdout);
 	fatalerr ("got signal %d\n", sig);
@@ -125,15 +125,12 @@ catch (sig)
 struct sigaction sig_act;
 #endif /* USGISH */
 
-int main(argc, argv)
-	int	argc;
-	char	**argv;
+int main(int argc, char **argv)
 {
 	register char	**fp = filelist;
 	register char	**incp = includedirs;
 	register char	*p;
 	register struct inclist	*ip;
-	char	*makefile = NULL;
 	struct filepointer	*filecontent;
 	struct symtab *psymp = predefs;
 	char *endmarker = NULL;
@@ -411,8 +408,7 @@ int main(argc, argv)
 	exit(0);
 }
 
-struct filepointer *getfile(file)
-	char	*file;
+struct filepointer *getfile(char *file)
 {
 	register int	fd;
 	struct filepointer	*content;
@@ -440,16 +436,14 @@ struct filepointer *getfile(file)
 	return(content);
 }
 
-int freefile(fp)
-	struct filepointer	*fp;
+int freefile(struct filepointer *fp)
 {
 	free(fp->f_base);
 	free(fp);
 	return 0;
 }
 
-char *copy(str)
-	register char	*str;
+char *copy(char	*str)
 {
 	register char	*p = (char *)malloc(strlen(str) + 1);
 
@@ -457,8 +451,7 @@ char *copy(str)
 	return(p);
 }
 
-int match(str, list)
-	register char	*str, **list;
+int match(char *str, char **list)
 {
 	register int	i;
 
@@ -472,8 +465,7 @@ int match(str, list)
  * Get the next line.  We only return lines beginning with '#' since that
  * is all this program is ever interested in.
  */
-char *get_line(filep)
-	register struct filepointer	*filep;
+char *get_line(struct filepointer *filep)
 {
 	register char	*p,	/* walking pointer */
 			*eof,	/* end of file pointer */
@@ -541,8 +533,7 @@ done:
  * Strip the file name down to what we want to see in the Makefile.
  * It will have objprefix and objsuffix around it.
  */
-char *base_name(file)
-	register char	*file;
+char *base_name(char *file)
 {
 	register char	*p;
 

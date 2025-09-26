@@ -57,6 +57,7 @@ namespec := $(LIB_NAME) $(vers)
 ifndef NoStaticLibrary
 
 staticlib := static/$(patsubst %,$(LibNoDebugPattern),$(LIB_NAME)$(major))
+MDFLAGS += -p static/
 
 mkstatic::
 	@(dir=static; $(CreateDir))
@@ -97,6 +98,7 @@ endif
 ifdef BuildSharedLibrary
 
 shlib := shared/$(shell $(SharedLibraryFullName) $(namespec))
+MDFLAGS += -p shared/
 
 ifdef Win32Platform
 # in case of Win32 lossage:
@@ -104,6 +106,14 @@ ifdef Win32Platform
           $(LIB_IMPORTS))
 else
   imps := $(LIB_IMPORTS)
+endif
+
+ifdef Darwin
+# Override normal compatibility for the version with only two components.
+SharedLibraryPlatformLinkFlagsTemplate = -dynamiclib $(CXXLINKOPTIONS) \
+                                         -install_name $(INSTALLLIBDIR)/$(SharedLibraryFullNameTemplate) \
+                                         -compatibility_version $$3.$$4 \
+                                         -current_version $$3.$$4
 endif
 
 mkshared::
@@ -183,6 +193,7 @@ endif
 #####################################################
 
 dbuglib := debug/$(patsubst %,$(LibDebugPattern),$(LIB_NAME)$(major))
+MDFLAGS += -p debug/
 
 mkstaticdbug::
 	@(dir=debug; $(CreateDir))
@@ -212,6 +223,7 @@ veryclean::
 ifdef BuildSharedLibrary
 
 dbugshlib := shareddebug/$(shell $(SharedLibraryDebugFullName) $(namespec))
+MDFLAGS += -p shareddebug/
 
 dbugimps  := $(patsubst $(DLLNoDebugSearchPattern),$(DLLDebugSearchPattern), \
                $(LIB_IMPORTS))

@@ -6,9 +6,9 @@ PYVERSION := $(shell $(PYTHON) -c 'import sys; sys.stdout.write(".".join(sys.ver
 PYPREFIX  := $(shell $(PYTHON) -c 'import sys; sys.stdout.write(sys.exec_prefix.replace("\\","/").replace(" ","\\ "))')
 PYINCDIR  := $(shell $(PYTHON) -c 'import sys, sysconfig; sys.stdout.write(sysconfig.get_path("include").replace("\\","/").replace(" ","\\ "))')
 
-PythonSHAREDLIB_SUFFIX = $(shell $(PYTHON) -c 'import sys, sysconfig; sys.stdout.write((sysconfig.get_config_var("EXT_SUFFIX") or ".so").lstrip("."))')
+PythonSHAREDLIB_SUFFIX = $(shell $(PYTHON) -c 'import sys, sysconfig; sys.stdout.write((sys.hexversion < 0x03020000 and sysconfig.get_config_var("SO") or sysconfig.get_config_var("EXT_SUFFIX") or ".so").lstrip("."))')
 
-PY_MODULE_SUFFIX := $(shell $(PYTHON) -c 'import sys; sys.stdout.write((sys.hexversion < 0x3000000) and "module" or "")')
+PY_MODULE_SUFFIX := $(shell $(PYTHON) -c 'import sys; sys.stdout.write((sys.hexversion < 0x3000000 and not hasattr(sys, "pypy_version_info")) and "module" or "")')
 
 PYINCFILE := "<Python.h>"
 PYINCTHRD := "<pythread.h>"

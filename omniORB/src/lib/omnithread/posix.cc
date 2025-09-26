@@ -1,7 +1,7 @@
 //				Package : omnithread
 // omnithread/posix.cc		Created : 7/94 tjr
 //
-//    Copyright (C) 2003-2008 Apasphere Ltd
+//    Copyright (C) 2003-2018 Apasphere Ltd
 //    Copyright (C) 1994-1999 AT&T Laboratories Cambridge
 //
 //    This file is part of the omnithread library
@@ -78,12 +78,12 @@
 #include <omnithread.h>
 #include <omniconfig.h>
 
-#if (defined(HAVE_SYS_TIME_H) || defined(__GLIBC__) && __GLIBC__ >= 2) || defined(__SCO_VERSION__) || defined(__aix__) || defined (__cygwin__) || defined(__darwin__) || defined(__macos__)
+#if (defined(OMNI_HAVE_SYS_TIME_H) || defined(__GLIBC__) && __GLIBC__ >= 2) || defined(__SCO_VERSION__) || defined(__aix__) || defined (__cygwin__) || defined(__darwin__) || defined(__macos__)
 // typedef of struct timeval and gettimeofday();
 #include <sys/time.h>
 #endif
 
-#if (defined(HAVE_UNISTD_H) || defined(__GLIBC__) && __GLIBC__ >= 2) || defined(__SCO_VERSION__) || defined(__aix__) || defined (__cygwin__) || defined(__darwin__) || defined(__macos__)
+#if (defined(OMNI_HAVE_UNISTD_H) || defined(__GLIBC__) && __GLIBC__ >= 2) || defined(__SCO_VERSION__) || defined(__aix__) || defined (__cygwin__) || defined(__darwin__) || defined(__macos__)
 #include <unistd.h>
 #endif
 
@@ -99,6 +99,14 @@
 
 #define DB(x) // x
 //#include <iostream.h> or #include <iostream> if DB is on.
+
+
+// If PthreadDraftVersion is not defined, assume it is modern
+
+#ifndef PthreadDraftVersion
+#  define PthreadDraftVersion 10
+#endif
+
 
 #if (PthreadDraftVersion <= 6)
 #define ERRNO(x) (((x) != 0) ? (errno) : 0)
@@ -770,7 +778,13 @@ omni_thread::exit(void* return_value)
 	DB(cerr << "omni_thread::exit: thread " << me->id() << " detached "
 	   << me->detached << " return value " << return_value << endl);
 
-	if (me->_values) {
+	if (me->detached) {
+	  delete me;
+	}
+	else if (me->_values) {
+	  // Delete per-thread state here, to ensure value destructors
+	  // are executed by this thread.
+	  
 	  for (key_t i=0; i < me->_value_alloc; i++) {
 	    if (me->_values[i]) {
 	      delete me->_values[i];
@@ -778,10 +792,8 @@ omni_thread::exit(void* return_value)
 	  }
 	  delete [] me->_values;
 	  me->_values = 0;
+	  me->_value_alloc = 0;
 	}
-
-	if (me->detached)
-	  delete me;
       }
     else
       {
@@ -814,6 +826,14 @@ omni_thread::self(void)
     }
 
     return me;
+}
+
+
+unsigned long
+omni_thread::plat_id()
+{
+    volatile pthread_t thread_id = pthread_self();
+    return (unsigned long)thread_id;
 }
 
 

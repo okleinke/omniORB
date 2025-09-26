@@ -3,7 +3,7 @@
 // cdrStream.h                Created on: 11/1/99
 //                            Author    : Sai Lai Lo (sll)
 //
-//    Copyright (C) 2003-2013 Apasphere Ltd
+//    Copyright (C) 2003-2015 Apasphere Ltd
 //    Copyright (C) 1999      AT&T Laboratories, Cambridge
 //
 //    This file is part of the omniORB library
@@ -77,7 +77,7 @@ public:
 	    ((l & 0x000000ff) << 24));
   }
 
-#ifdef HAS_LongLong
+#ifdef OMNI_HAS_LongLong
   static inline _CORBA_LongLong byteSwap(_CORBA_LongLong l) {
     return (((l & _CORBA_LONGLONG_CONST(0xff00000000000000)) >> 56) |
 	    ((l & _CORBA_LONGLONG_CONST(0x00ff000000000000)) >> 40) |
@@ -154,7 +154,7 @@ public:
 
   inline _CORBA_Boolean unmarshalBoolean() {
     _CORBA_Octet o = unmarshalOctet();
-#ifdef HAS_Cplusplus_Bool
+#ifdef OMNI_HAS_Cplusplus_Bool
     return o ? true : false;
 #else
     return (_CORBA_Boolean)o;
@@ -206,7 +206,7 @@ public:
   intMarshalFns(Long,   ALIGN_4)
   intMarshalFns(ULong,  ALIGN_4)  
 
-#ifdef HAS_LongLong
+#ifdef OMNI_HAS_LongLong
   intMarshalFns(LongLong,  ALIGN_8)
   intMarshalFns(ULongLong, ALIGN_8)  
 #endif
@@ -217,7 +217,7 @@ public:
   //
   // Marshalling methods : float types
 
-#ifndef NO_FLOAT
+#ifndef OMNI_NO_FLOAT
 
 #  ifndef USING_PROXY_FLOAT
 
@@ -232,7 +232,7 @@ public:
     return u.a;
   }
 
-#    if defined(HAS_LongLong) && !defined(OMNI_MIXED_ENDIAN_DOUBLE)
+#    if defined(OMNI_HAS_LongLong) && !defined(OMNI_MIXED_ENDIAN_DOUBLE)
 
   inline void marshalDouble(_CORBA_Double a) {
     union { _CORBA_Double a; _CORBA_ULongLong l; } u;
@@ -381,11 +381,11 @@ public:
 #  endif  // USING_PROXY_FLOAT
 
 
-#  if defined(HAS_LongDouble) && defined(HAS_LongLong)
+#  if defined(OMNI_HAS_LongDouble) && defined(OMNI_HAS_LongLong)
 
   // We only support LongDouble if we also have LongLong.
 
-#    if SIZEOF_LONG_DOUBLE == 16
+#    if OMNI_SIZEOF_LONG_DOUBLE == 16
 
   inline void marshalLongDouble(_CORBA_LongDouble a) {
     omni::ptr_arith_t p1 = outMkr(omni::ALIGN_8);
@@ -442,9 +442,9 @@ public:
   _CORBA_LongDouble unmarshalLongDouble();
 #    endif
 
-#  endif  // HAS_LongDouble
+#  endif  // OMNI_HAS_LongDouble
 
-#endif // NO_FLOAT
+#endif // OMNI_NO_FLOAT
 
 
   //
@@ -489,6 +489,18 @@ public:
   // <size> must be a multiple of <align>.
   // For instance, if <align> == omni::ALIGN_8 then <size> % 8 == 0.
 
+  inline void put_large_octet_array(const _CORBA_Octet* b, size_t size,
+                                    omni::alignment_t align=omni::ALIGN_1) {
+    const size_t batch = 0x7ffffff8;
+
+    while (size > batch) {
+      put_octet_array(b, (int)batch, align);
+      b    += batch;
+      size -= batch;
+    }
+    put_octet_array(b, (int)size, align);
+  }
+
   inline void put_small_octet_array(const _CORBA_Octet* b, int size) {
     omni::ptr_arith_t p1 = (omni::ptr_arith_t)pd_outb_mkr;
     omni::ptr_arith_t p2 = p1 + size;
@@ -509,6 +521,18 @@ public:
 			       omni::alignment_t align=omni::ALIGN_1) = 0;
   // Get array of octets.
 
+  inline void get_large_octet_array(_CORBA_Octet* b, size_t size,
+                                    omni::alignment_t align=omni::ALIGN_1) {
+    const size_t batch = 0x7ffffff8;
+
+    while (size > batch) {
+      get_octet_array(b, (int)batch, align);
+      b    += batch;
+      size -= batch;
+    }
+    get_octet_array(b, (int)size, align);
+  }
+
   virtual void skipInput(_CORBA_ULong size) = 0;
   // Skip <size> bytes from the input stream.
 
@@ -519,14 +543,14 @@ public:
   // <nitems> of size <itemSize>. The initial alignment of the data
   // starts at <align>. Return false otherwise.
 
-  virtual _CORBA_ULong currentInputPtr() const = 0;
+  virtual size_t currentInputPtr() const = 0;
   // Return a value that represents the position of the next byte in
   // the input stream. Later bytes in the stream has a higher return
   // value. The absolute value of the return value has no meaning.
   // The only use of this function is to compute the distance between
   // two bytes in the stream.
 
-  virtual _CORBA_ULong currentOutputPtr() const = 0;
+  virtual size_t currentOutputPtr() const = 0;
   // Return a value that represents the position of the next byte in
   // the output stream. Later bytes in the stream have a higher return
   // value.  The absolute value of the return value has no meaning.
@@ -594,7 +618,7 @@ public:
   inline void
   unmarshalArrayBoolean(_CORBA_Boolean* a, int length)
   {
-#if !defined(HAS_Cplusplus_Bool) || (SIZEOF_BOOL == 1)
+#if !defined(OMNI_HAS_Cplusplus_Bool) || (OMNI_SIZEOF_BOOL == 1)
     get_octet_array((_CORBA_Char*)a, length, omni::ALIGN_1);
 #else
     for (int i = 0; i < length; i++)
@@ -643,7 +667,7 @@ public:
 	a[i] = byteSwap(a[i]);
   }
 
-#ifdef HAS_LongLong
+#ifdef OMNI_HAS_LongLong
   inline void
   unmarshalArrayLongLong(_CORBA_LongLong* a, int length)
   {
@@ -665,7 +689,7 @@ public:
   }
 #endif
 
-#if !defined(NO_FLOAT)
+#if !defined(OMNI_NO_FLOAT)
   inline void
   unmarshalArrayFloat(_CORBA_Float* a, int length)
   {
@@ -687,7 +711,7 @@ public:
 
     if (unmarshal_byte_swap()) {
 
-#  if defined(HAS_Longlong) && !defined (OMNI_MIXED_ENDIAN_DOUBLE)
+#  if defined(OMNI_HAS_Longlong) && !defined (OMNI_MIXED_ENDIAN_DOUBLE)
       _CORBA_ULongLong* p=(_CORBA_ULongLong*)a;
       for( int i = 0; i < length; i++ ) {
 	p[i] = byteSwap(p[i]);
@@ -758,10 +782,17 @@ protected:
   void* pd_inb_end;
   void* pd_inb_mkr;
 
-  inline omni::ptr_arith_t inEnd() { return (omni::ptr_arith_t)pd_inb_end; }
-  inline omni::ptr_arith_t inMkr() { return (omni::ptr_arith_t)pd_inb_mkr; }
+  inline omni::ptr_arith_t inEnd() const
+  {
+    return (omni::ptr_arith_t)pd_inb_end;
+  }
 
-  inline omni::ptr_arith_t inMkr(omni::alignment_t align)
+  inline omni::ptr_arith_t inMkr() const
+  {
+    return (omni::ptr_arith_t)pd_inb_mkr;
+  }
+
+  inline omni::ptr_arith_t inMkr(omni::alignment_t align) const
   {
     return omni::align_to((omni::ptr_arith_t)pd_inb_mkr, align);
   }
@@ -781,10 +812,17 @@ protected:
   void* pd_outb_end;
   void* pd_outb_mkr;
 
-  inline omni::ptr_arith_t outEnd() { return (omni::ptr_arith_t)pd_outb_end; }
-  inline omni::ptr_arith_t outMkr() { return (omni::ptr_arith_t)pd_outb_mkr; }
+  inline omni::ptr_arith_t outEnd() const
+  {
+    return (omni::ptr_arith_t)pd_outb_end;
+  }
 
-  inline omni::ptr_arith_t outMkr(omni::alignment_t align)
+  inline omni::ptr_arith_t outMkr() const
+  {
+    return (omni::ptr_arith_t)pd_outb_mkr;
+  }
+
+  inline omni::ptr_arith_t outMkr(omni::alignment_t align) const
   {
     return omni::align_to((omni::ptr_arith_t)pd_outb_mkr, align);
   }
@@ -840,13 +878,13 @@ private:
   fetchReserveMarshalFns(UShort);
   fetchReserveMarshalFns(Long);
   fetchReserveMarshalFns(ULong);
-#ifdef HAS_LongLong
+#ifdef OMNI_HAS_LongLong
   fetchReserveMarshalFns(LongLong);
   fetchReserveMarshalFns(ULongLong);
 #endif
-#ifndef NO_FLOAT
+#ifndef OMNI_NO_FLOAT
   fetchReserveMarshalFns(Double);
-#  if defined(HAS_LongDouble) && defined(HAS_LongLong)
+#  if defined(OMNI_HAS_LongDouble) && defined(OMNI_HAS_LongLong)
   fetchReserveMarshalFns(LongDouble);
 #  endif
 #endif
@@ -935,14 +973,14 @@ marshallingOperators(Short)
 marshallingOperators(UShort)
 marshallingOperators(Long)
 marshallingOperators(ULong)
-#ifdef HAS_LongLong
+#ifdef OMNI_HAS_LongLong
 marshallingOperators(LongLong)
 marshallingOperators(ULongLong)
 #endif
-#if !defined(NO_FLOAT)
+#if !defined(OMNI_NO_FLOAT)
 marshallingOperators(Float)
 marshallingOperators(Double)
-#  if defined(HAS_LongDouble) && defined(HAS_LongLong)
+#  if defined(OMNI_HAS_LongDouble) && defined(OMNI_HAS_LongLong)
 marshallingOperators(LongDouble)
 #  endif
 #endif
@@ -959,7 +997,7 @@ void operator<<=(char& a, cdrStream& s);
 void operator>>=(unsigned char  a, cdrStream& s);
 void operator<<=(unsigned char& a, cdrStream& s);
 
-#ifdef HAS_Cplusplus_Bool
+#ifdef OMNI_HAS_Cplusplus_Bool
 
 void operator>>=(bool  a, cdrStream& s);
 void operator<<=(bool& a, cdrStream& s);
@@ -1062,8 +1100,8 @@ public:
   _CORBA_Boolean reserveOutputSpaceForPrimitiveType(omni::alignment_t,size_t);
   _CORBA_Boolean maybeReserveOutputSpace(omni::alignment_t,size_t);
 
-  _CORBA_ULong currentInputPtr() const;
-  _CORBA_ULong currentOutputPtr() const;
+  size_t currentInputPtr() const;
+  size_t currentOutputPtr() const;
 
 private:
   _CORBA_Boolean reserveOutputSpace(omni::alignment_t,size_t);
@@ -1151,8 +1189,8 @@ public:
 
   void fetchInputData(omni::alignment_t,size_t);
 
-  _CORBA_ULong currentInputPtr() const;
-  _CORBA_ULong currentOutputPtr() const;
+  size_t currentInputPtr() const;
+  size_t currentOutputPtr() const;
 
   virtual void* ptrToClass(int* cptr);
   static inline cdrCountingStream* downcast(cdrStream* s) {
@@ -1223,8 +1261,8 @@ protected:
   _CORBA_Boolean maybeReserveOutputSpace(omni::alignment_t align,
 					 size_t required);
 
-  _CORBA_ULong currentInputPtr() const;
-  _CORBA_ULong currentOutputPtr() const;
+  size_t currentInputPtr() const;
+  size_t currentOutputPtr() const;
 
   _CORBA_ULong completion();
 
@@ -1349,8 +1387,8 @@ public:
   _CORBA_Boolean maybeReserveOutputSpace(omni::alignment_t align,
 					 size_t required);
 
-  _CORBA_ULong currentInputPtr() const;
-  _CORBA_ULong currentOutputPtr() const;
+  size_t currentInputPtr() const;
+  size_t currentOutputPtr() const;
 
   _CORBA_ULong completion();
 

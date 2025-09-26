@@ -25,11 +25,11 @@
 //   
 //   Python interface to front-end
 
-#if defined(__VMS)
-#  include <Python.h>
-#else
-#  include PYTHON_INCLUDE
-#endif
+// On Windows, if _DEBUG is defined, some Python versions try to force
+// use of _d.lib libraries that are not actually present.
+#undef _DEBUG
+
+#include <Python.h>
 
 #include <idlsysdep.h>
 #include <idlast.h>
@@ -42,7 +42,7 @@
 
 
 // PyLongFromLongLong is broken in Python 1.5.2. Workaround here:
-#ifdef HAS_LongLong
+#ifdef OMNI_HAS_LongLong
 #  if !defined(PY_VERSION_HEX) || (PY_VERSION_HEX < 0x01050200)
 #    error "omniidl requires Python 1.5.2 or higher"
 
@@ -427,7 +427,7 @@ visitConst(Const* c)
   case IdlType::tk_string:
     pyv = PyString_FromString(c->constAsString()); break;
 
-#ifdef HAS_LongLong
+#ifdef OMNI_HAS_LongLong
   case IdlType::tk_longlong:
     pyv = MyPyLong_FromLongLong(c->constAsLongLong()); break;
 
@@ -435,7 +435,7 @@ visitConst(Const* c)
     pyv = PyLong_FromUnsignedLongLong(c->constAsULongLong()); break;
 
 #endif
-#ifdef HAS_LongDouble
+#ifdef OMNI_HAS_LongDouble
   case IdlType::tk_longdouble:
     pyv = PyFloat_FromDouble(c->constAsLongDouble());
     IdlWarning(c->file(), c->line(),
@@ -661,7 +661,7 @@ visitCaseLabel(CaseLabel* l)
   case IdlType::tk_boolean: pyv = PyInt_FromLong(l->labelAsBoolean());  break;
   case IdlType::tk_char:    pyv = PyString_FromChar(l->labelAsChar());
     break;
-#ifdef HAS_LongLong
+#ifdef OMNI_HAS_LongLong
   case IdlType::tk_longlong:
     pyv = MyPyLong_FromLongLong(l->labelAsLongLong());
     break;
@@ -1473,13 +1473,15 @@ extern "C" {
     return Py_None;
   }
 
+#ifndef PYPY_VERSION
   static PyObject* IdlPyRunInteractiveLoop(PyObject* self, PyObject* args)
   {
     PyRun_InteractiveLoop(stdin, (char*)"<stdin>");
     Py_INCREF(Py_None);
     return Py_None;
   }
-
+#endif
+  
   static PyObject* IdlPyCaseSensitive(PyObject* self, PyObject* args)
   {
     if (!PyArg_ParseTuple(args, (char*)"")) return 0;
@@ -1491,11 +1493,11 @@ extern "C" {
   {
     if (!PyArg_ParseTuple(args, (char*)"")) return 0;
     PyObject* l = PyList_New(0);
-#ifdef HAS_LongLong
-    PyList_Append(l, PyString_FromString("-DHAS_LongLong"));
+#ifdef OMNI_HAS_LongLong
+    PyList_Append(l, PyString_FromString("-DOMNI_HAS_LongLong"));
 #endif
-#ifdef HAS_LongDouble
-    PyList_Append(l, PyString_FromString("-DHAS_LongDouble"));
+#ifdef OMNI_HAS_LongDouble
+    PyList_Append(l, PyString_FromString("-DOMNI_HAS_LongDouble"));
 #endif
     return l;
   }
@@ -1518,7 +1520,9 @@ extern "C" {
     {(char*)"noForwardWarning",   IdlPyNoForwardWarning,   METH_VARARGS},
     {(char*)"keepComments",       IdlPyKeepComments,       METH_VARARGS},
     {(char*)"relativeScopedName", IdlPyRelativeScopedName, METH_VARARGS},
+#ifndef PYPY_VERSION
     {(char*)"runInteractiveLoop", IdlPyRunInteractiveLoop, METH_VARARGS},
+#endif
     {(char*)"caseSensitive",      IdlPyCaseSensitive,      METH_VARARGS},
     {(char*)"platformDefines",    IdlPyPlatformDefines,    METH_VARARGS},
     {(char*)"alwaysTempFile",     IdlPyAlwaysTempFile,     METH_VARARGS},

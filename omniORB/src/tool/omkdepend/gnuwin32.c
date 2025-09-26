@@ -62,8 +62,9 @@ char *TranslateFileNameD2U(char *in, int offset)
   char *tmp = malloc(strlen(in)+1);
 
   strcpy(tmp,in);
-  for (i = 0; i < strlen(tmp); i++) {
-    if (tmp[i] == '\\') tmp[i] = '/';
+  for (i = 0; tmp[i]; i++) {
+    if (tmp[i] == '\\')
+      tmp[i] = '/';
   }
   in = tmp;
 
@@ -85,10 +86,27 @@ char *TranslateFileNameD2U(char *in, int offset)
     strcpy(out, in);
   }
 
-  for (i = offset; i < strlen(out); i++) {
-    if (out[i] == '\\') {
+  int space = 0;
+  for (i = offset; out[i]; i++) {
+    if (out[i] == '\\')
       out[i] = '/';
+    else if (out[i] == ' ')
+      space = 1;
+  }
+
+  if (space) {
+    char* newout = malloc(strlen(out) * 2 + 1);
+    char* o = out;
+    char* n = newout;
+
+    for (; *o; ++o) {
+      if (*o == ' ')
+	*n++ = '\\';
+      *n++ = *o;
     }
+    *n = '\0';
+    free(out);
+    out = newout;
   }
 
   /* Any residue dos drive, i.e. [A-Za-z]:,

@@ -1,12 +1,23 @@
 dnl -*- M4 -*-
-AC_INIT(omniORBpy, 4.2.3, bugs@omniorb-support.com)
+AC_INIT(omniORBpy, 4.3.3, bugs@omniorb-support.com)
 
 AC_PREREQ(2.52)
-AC_CONFIG_SRCDIR(python/omniORB/CORBA.py)
+AC_CONFIG_SRCDIR(python3/omniORB/CORBA.py)
 AC_CONFIG_AUX_DIR(bin/scripts)
 
 AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
+
+
+dnl ** CFLAGS / CXXFLAGS
+
+if test "${CFLAGS+set}" != set; then
+    CFLAGS="-O"
+fi
+
+if test "${CXXFLAGS+set}" != set; then
+    CXXFLAGS="-O3"
+fi
 
 
 dnl ** Programs
@@ -19,9 +30,13 @@ AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 
 AM_PATH_PYTHON
+OMNI_FIX_PYTHONDIR
+
 AC_LANG(C++)
 
 AC_SUBST(EXTRA_GCC_CXXFLAGS)
+
+AC_CXX_HAVE_STD
 
 
 dnl ** Libraries
@@ -29,6 +44,7 @@ dnl ** Libraries
 OMNI_OMNIORB_ROOT
 OMNI_OPENSSL_ROOT
 OMNI_ENABLE_ZIOP
+OMNI_ENABLE_HTTP_CRYPTO
 
 
 dnl ** More programs
@@ -83,31 +99,39 @@ plat_def="__unknown_platform__"
 os_v="0"
 
 case "$host" in
-  *-*-linux-*)   plat_name="Linux";    plat_def="__linux__";    os_v="2";;
-  *-*-uclinux-*) plat_name="Linux";    plat_def="__linux__";    os_v="2";;
-  *-*-cygwin*)   plat_name="Cygwin";   plat_def="__cygwin__";   os_v="1";;
-  *-*-solaris*)  plat_name="SunOS";    plat_def="__sunos__";    os_v="5";;
-  *-*-osf3*)     plat_name="OSF1";     plat_def="__osf1__";     os_v="3";;
-  *-*-osf4*)     plat_name="OSF1";     plat_def="__osf1__";     os_v="4";;
-  *-*-osf5*)     plat_name="OSF1";     plat_def="__osf1__";     os_v="5";;
-  *-*-hpux10*)   plat_name="HPUX";     plat_def="__hpux__";     os_v="10";;
-  *-*-hpux11*)   plat_name="HPUX";     plat_def="__hpux__";     os_v="11";;
-  *-*-nextstep*) plat_name="NextStep"; plat_def="__nextstep__"; os_v="3";;
-  *-*-openstep*) plat_name="NextStep"; plat_def="__nextstep__"; os_v="3";;
-  *-*-irix*)     plat_name="IRIX";     plat_def="__irix__";     os_v="6";;
-  *-*-aix*)      plat_name="AIX";      plat_def="__aix__";      os_v="4";;
-  *-*-darwin*)   plat_name="Darwin";   plat_def="__darwin__";   os_v="1";;
-  *-*-freebsd3*) plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="3";;
-  *-*-freebsd4*) plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="4";;
-  *-*-freebsd5*) plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="5";;
-  *-*-freebsd6*) plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="6";;
-  *-*-freebsd7*) plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="7";;
-  *-*-freebsd8*) plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="8";;
-  *-*-kfreebsd*) plat_name="kFreeBSD";  plat_def="__FreeBSD_kernel__";  os_v="6";;
-  *-*-netbsd*)   plat_name="NetBSD";   plat_def="__netbsd__";   os_v="1";;
-  *-*-openbsd*)  plat_name="OpenBSD";  plat_def="__openbsd__";  os_v="3";;
-  *-*-sco*)      plat_name="OSR5";     plat_def="__osr5__";     os_v="5";;
-  *-*-gnu*)      plat_name="GNU";      plat_def="__hurd__" ;    os_v="0";;
+  *-*-linux-*)     plat_name="Linux";    plat_def="__linux__";    os_v="2";;
+  *-*-uclinux-*)   plat_name="Linux";    plat_def="__linux__";    os_v="2";;
+  *-*-cygwin*)     plat_name="Cygwin";   plat_def="__cygwin__";   os_v="1";;
+  *-*-solaris*)    plat_name="SunOS";    plat_def="__sunos__";    os_v="5";;
+  *-*-osf3*)       plat_name="OSF1";     plat_def="__osf1__";     os_v="3";;
+  *-*-osf4*)       plat_name="OSF1";     plat_def="__osf1__";     os_v="4";;
+  *-*-osf5*)       plat_name="OSF1";     plat_def="__osf1__";     os_v="5";;
+  *-*-hpux10*)     plat_name="HPUX";     plat_def="__hpux__";     os_v="10";;
+  *-*-hpux11*)     plat_name="HPUX";     plat_def="__hpux__";     os_v="11";;
+  *-*-nextstep*)   plat_name="NextStep"; plat_def="__nextstep__"; os_v="3";;
+  *-*-openstep*)   plat_name="NextStep"; plat_def="__nextstep__"; os_v="3";;
+  *-*-irix*)       plat_name="IRIX";     plat_def="__irix__";     os_v="6";;
+  *-*-aix*)        plat_name="AIX";      plat_def="__aix__";      os_v="4";;
+  *-*-darwin*)     plat_name="Darwin";   plat_def="__darwin__";   os_v="1";;
+  *-*-dragonfly*)  plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="9";;
+  *-*-freebsd3.*)  plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="3";;
+  *-*-freebsd4.*)  plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="4";;
+  *-*-freebsd5.*)  plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="5";;
+  *-*-freebsd6.*)  plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="6";;
+  *-*-freebsd7.*)  plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="7";;
+  *-*-freebsd8.*)  plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="8";;
+  *-*-freebsd9.*)  plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="9";;
+  *-*-freebsd10.*) plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="10";;
+  *-*-freebsd11.*) plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="11";;
+  *-*-freebsd12.*) plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="12";;
+  *-*-freebsd13.*) plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="13";;
+  *-*-freebsd14.*) plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="14";;
+  *-*-freebsd15.*) plat_name="FreeBSD";  plat_def="__freebsd__";  os_v="15";;
+  *-*-kfreebsd*)   plat_name="kFreeBSD"; plat_def="__FreeBSD_kernel__"; os_v="6";;
+  *-*-netbsd*)     plat_name="NetBSD";   plat_def="__netbsd__";   os_v="1";;
+  *-*-openbsd*)    plat_name="OpenBSD";  plat_def="__openbsd__";  os_v="3";;
+  *-*-sco*)        plat_name="OSR5";     plat_def="__osr5__";     os_v="5";;
+  *-*-gnu*)        plat_name="GNU";      plat_def="__hurd__" ;    os_v="0";;
 esac
 
 AC_SUBST(PLATFORM_NAME, $plat_name)
@@ -127,6 +151,7 @@ case "$host" in
   alpha*)   proc_name="AlphaProcessor";   proc_def="__alpha__";;
   m68k-*)   proc_name="m68kProcessor";    proc_def="__m68k__";;
   mips*)    proc_name="IndigoProcessor";  proc_def="__mips__";;
+  arm64-*)  proc_name="Arm64Processor";   proc_def="__arm64__";;
   arm-*)    proc_name="ArmProcessor";     proc_def="__arm__";;
   s390-*)   proc_name="s390Processor";    proc_def="__s390__";;
   ia64-*)   proc_name="ia64Processor";    proc_def="__ia64__";;
@@ -146,13 +171,15 @@ AC_CONFIG_FILES(
                 examples/embed/GNUmakefile
                 modules/GNUmakefile
                 modules/codesets/GNUmakefile
+                modules/httpCrypto/GNUmakefile
+                modules/httpTP/GNUmakefile
                 modules/sslTP/GNUmakefile
                 modules/connections/GNUmakefile
                 modules/ziop/GNUmakefile
-                python/GNUmakefile
-                python/omniidl_be/GNUmakefile
-                python/COS/GNUmakefile
-                python/omniORB/GNUmakefile
+                python2/GNUmakefile
+                python2/omniidl_be/GNUmakefile
+                python2/COS/GNUmakefile
+                python2/omniORB/GNUmakefile
                 python3/GNUmakefile
                 python3/omniidl_be/GNUmakefile
                 python3/COS/GNUmakefile

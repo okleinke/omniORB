@@ -102,11 +102,7 @@ omniPy::handleSystemException(const CORBA::SystemException& ex, PyObject* info)
     exca = Py_BuildValue((char*)"(ii)", ex.minor(), ex.completed());
   }
 
-#if (PY_VERSION_HEX >= 0x03070000) // Python 3.7 or later
   PyObject* exci = PyObject_CallObject(excc, exca);
-#else // Python 3.0 - 3.6
-  PyObject* exci = PyEval_CallObject(excc, exca);
-#endif
   Py_DECREF(exca);
   if (exci) {
     // If we couldn't create the exception object, there will be a
@@ -126,11 +122,7 @@ omniPy::createPySystemException(const CORBA::SystemException& ex)
   OMNIORB_ASSERT(excc);
 
   PyObject* exca = Py_BuildValue((char*)"(ii)", ex.minor(), ex.completed());
-#if (PY_VERSION_HEX >= 0x03070000) // Python 3.7 or later
   PyObject* exci = PyObject_CallObject(excc, exca);
-#else // Python 3.0 - 3.6
-  PyObject* exci = PyEval_CallObject(excc, exca);
-#endif
   Py_DECREF(exca);
 
   return exci;
@@ -462,11 +454,7 @@ PyUserException::operator<<=(cdrStream& stream)
 		     unmarshalPyObject(pystream,
 				       PyTuple_GET_ITEM(desc_, j)));
   }
-#if (PY_VERSION_HEX >= 0x03070000) // Python 3.7 or later
   exc_ = PyObject_CallObject(excclass, exctuple);
-#else // Python 3.0 - 3.6
-  exc_ = PyEval_CallObject(excclass, exctuple);
-#endif
 
   if (!exc_) {
     // Oh dear. Python exception constructor threw an exception.

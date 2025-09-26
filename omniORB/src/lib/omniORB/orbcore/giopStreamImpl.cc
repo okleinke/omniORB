@@ -50,7 +50,7 @@ GIOP::Version orbParameters::maxGIOPVersion = { 1, 2 };
 //
 //  Valid values = 1.0 | 1.1 | 1.2
 
-CORBA::ULong orbParameters::giopMaxMsgSize = 2048 * 1024;
+size_t orbParameters::giopMaxMsgSize = 2048 * 1024;
 //   This value defines the ORB-wide limit on the size of GIOP message 
 //   (excluding the header). If this limit is exceeded, the ORB will
 //   refuse to send or receive the message and raise a MARSHAL exception.
@@ -249,7 +249,7 @@ public:
 			1,
 			"-ORBmaxGIOPVersion < 1.0 | 1.1 | 1.2 >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     unsigned int ma, mi;
     if ( sscanf(value, "%u.%u", &ma, &mi) != 2 || ma > 255 || mi > 255) {
@@ -278,22 +278,40 @@ public:
 
   giopMaxMsgSizeHandler() : 
     orbOptions::Handler("giopMaxMsgSize",
-			"giopMaxMsgSize = n >= 8192",
+			"giopMaxMsgSize = n >= 8192 or n == 0",
 			1,
-			"-ORBgiopMaxMsgSize < n >= 8192 >") {}
+			"-ORBgiopMaxMsgSize < n >= 8192 or n == 0 >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
-    CORBA::ULong v;
-    if (!orbOptions::getULong(value,v) || v < 8192) {
+    size_t v;
+    
+    if (!orbOptions::getSizeT(value,v) || (v && v < 8192)) {
       throw orbOptions::BadParam(key(),value,
-				 "Invalid value, expect n >= 8192");
+				 "Invalid value, expect n >= 8192 or n == 0");
     }
-    orbParameters::giopMaxMsgSize = v;
+    if (v) {
+      orbParameters::giopMaxMsgSize = v;
+    }
+    else {
+      // Set to maximum signed value, to aid indirection code that
+      // calculates negative values.
+
+#if (OMNI_SIZEOF_LONG == OMNI_SIZEOF_PTR)
+      orbParameters::giopMaxMsgSize = LONG_MAX;
+#elif (OMNI_SIZEOF_INT == OMNI_SIZEOF_PTR)
+      orbParameters::giopMaxMsgSize = INT_MAX;
+#elif defined (_WIN64)
+      orbParameters::giopMaxMsgSize = _I64_MAX;
+#else
+#error "No suitable integer type available to calculate maximum" \
+  " message size"
+#endif
+    }
   }
 
   void dump(orbOptions::sequenceString& result) {
-    orbOptions::addKVULong(key(),orbParameters::giopMaxMsgSize,
+    orbOptions::addKVSizeT(key(),orbParameters::giopMaxMsgSize,
 			   result);
   }
 
@@ -311,7 +329,7 @@ public:
 			1,
 			"-ORBclientCallTimeOutPeriod < n >= 0 in msecs >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v)) {
@@ -342,7 +360,7 @@ public:
 			1,
 			"-ORBsupportPerThreadTimeOut < 0 | 1 >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::Boolean v;
     if (!orbOptions::getBoolean(value,v)) {
@@ -370,7 +388,7 @@ public:
 			1,
 			"-ORBclientConnectTimeOutPeriod < n >= 0 in msecs >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v)) {
@@ -403,7 +421,7 @@ public:
 			1,
 			"-ORBserverCallTimeOutPeriod < n >= 0 in msecs >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v)) {
@@ -434,7 +452,7 @@ public:
 			1,
 			"-ORBmaxInterleavedCallsPerConnection < n > 0 >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v) || v < 1) {
@@ -466,7 +484,7 @@ public:
 			1,
 			"-ORBgiopTargetAddressMode < 0 | 1 | 2 >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v)) {
@@ -517,7 +535,7 @@ public:
 			"-ORBstrictIIOP < 0 | 1 >") {}
 
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::Boolean v;
     if (!orbOptions::getBoolean(value,v)) {
@@ -534,6 +552,122 @@ public:
 };
 
 static strictIIOPHandler strictIIOPHandler_;
+
+
+/////////////////////////////////////////////////////////////////////////////
+class giopBufferSizeHandler : public orbOptions::Handler {
+public:
+
+  giopBufferSizeHandler() : 
+    orbOptions::Handler("giopBufferSize",
+			"giopBufferSize = n >= 8192",
+			1,
+			"-ORBgiopBufferSize < n >= 8192 >") {}
+
+  void visit(const char* value,orbOptions::Source) {
+
+    CORBA::ULong v;
+    if (!orbOptions::getULong(value,v) || (v < 8192)) {
+      throw orbOptions::BadParam(key(),value,
+				 "Expect n >= 8192");
+    }
+    giopStream::bufferSize = v;
+  }
+
+  void dump(orbOptions::sequenceString& result) {
+    orbOptions::addKVULong(key(), giopStream::bufferSize, result);
+  }
+
+};
+
+static giopBufferSizeHandler giopBufferSizeHandler_;
+
+
+/////////////////////////////////////////////////////////////////////////////
+class giopDirectSendCutOffHandler : public orbOptions::Handler {
+public:
+
+  giopDirectSendCutOffHandler() : 
+    orbOptions::Handler("giopDirectSendCutOff",
+			"giopDirectSendCutOff = n >= 128",
+			1,
+			"-ORBgiopDirectSendCutOff < n >= 128 >") {}
+
+  void visit(const char* value,orbOptions::Source) {
+
+    CORBA::ULong v;
+    if (!orbOptions::getULong(value,v) || (v < 128)) {
+      throw orbOptions::BadParam(key(),value,
+				 "Expect n >= 128");
+    }
+    giopStream::directSendCutOff = v;
+  }
+
+  void dump(orbOptions::sequenceString& result) {
+    orbOptions::addKVULong(key(), giopStream::directSendCutOff, result);
+  }
+
+};
+
+static giopDirectSendCutOffHandler giopDirectSendCutOffHandler_;
+
+
+/////////////////////////////////////////////////////////////////////////////
+class giopDirectReceiveCutOffHandler : public orbOptions::Handler {
+public:
+
+  giopDirectReceiveCutOffHandler() : 
+    orbOptions::Handler("giopDirectReceiveCutOff",
+			"giopDirectReceiveCutOff = n >= 128",
+			1,
+			"-ORBgiopDirectReceiveCutOff < n >= 128 >") {}
+
+  void visit(const char* value,orbOptions::Source) {
+
+    CORBA::ULong v;
+    if (!orbOptions::getULong(value,v) || (v < 128)) {
+      throw orbOptions::BadParam(key(),value,
+				 "Expect n >= 128");
+    }
+    giopStream::directReceiveCutOff = v;
+  }
+
+  void dump(orbOptions::sequenceString& result) {
+    orbOptions::addKVULong(key(), giopStream::directReceiveCutOff, result);
+  }
+
+};
+
+static giopDirectReceiveCutOffHandler giopDirectReceiveCutOffHandler_;
+
+
+/////////////////////////////////////////////////////////////////////////////
+class giopMinChunkBeforeDirectSendHandler : public orbOptions::Handler {
+public:
+
+  giopMinChunkBeforeDirectSendHandler() : 
+    orbOptions::Handler("giopMinChunkBeforeDirectSend",
+			"giopMinChunkBeforeDirectSend = n >= 128",
+			1,
+			"-ORBgiopMinChunkBeforeDirectSend < n >= 128 >") {}
+
+  void visit(const char* value,orbOptions::Source) {
+
+    CORBA::ULong v;
+    if (!orbOptions::getULong(value,v) || (v < 128)) {
+      throw orbOptions::BadParam(key(),value,
+				 "Expect n >= 128");
+    }
+    giopStream::minChunkBeforeDirectSend = v;
+  }
+
+  void dump(orbOptions::sequenceString& result) {
+    orbOptions::addKVULong(key(), giopStream::minChunkBeforeDirectSend, result);
+  }
+
+};
+
+static giopMinChunkBeforeDirectSendHandler giopMinChunkBeforeDirectSendHandler_;
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -557,6 +691,10 @@ public:
     orbOptions::singleton().registerHandler(maxInterleavedCallsPerConnectionHandler_);
     orbOptions::singleton().registerHandler(giopTargetAddressModeHandler_);
     orbOptions::singleton().registerHandler(strictIIOPHandler_);
+    orbOptions::singleton().registerHandler(giopBufferSizeHandler_);
+    orbOptions::singleton().registerHandler(giopDirectSendCutOffHandler_);
+    orbOptions::singleton().registerHandler(giopDirectReceiveCutOffHandler_);
+    orbOptions::singleton().registerHandler(giopMinChunkBeforeDirectSendHandler_);
   }
 
   void attach() {

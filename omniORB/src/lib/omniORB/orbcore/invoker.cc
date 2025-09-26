@@ -758,9 +758,9 @@ omniAsyncInvoker::~omniAsyncInvoker()
       omni_thread::get_time(deadline, timeout);
 
       if (omniORB::trace(25)) {
-        omniORB::logger l;
-        l << "Wait for " << pd_total_threads << " invoker thread"
-          << plural(pd_total_threads) << " to finish.\n";
+        omniORB::logger log;
+        log << "Wait for " << pd_total_threads << " invoker thread"
+            << plural(pd_total_threads) << " to finish.\n";
       }
 
       int go = 1;
@@ -875,7 +875,7 @@ public:
 			1,
 			"-ORBidleThreadTimeout < n > 0 sec >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v) || v == 0) {
@@ -904,7 +904,7 @@ public:
 			1,
 			"-ORBmaxServerThreadPoolSize < n >= 1 >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v) || v < 1) {
@@ -933,7 +933,7 @@ public:
 			1,
 			"-ORBmaxClientThreadPoolSize < n >= 1 >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v) || v < 1) {

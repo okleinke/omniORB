@@ -33,6 +33,18 @@
 //
 // Python version dependencies
 
+static inline CORBA::ULong
+sizeToULong(Py_ssize_t size)
+{
+#if (OMNI_SIZEOF_PTR == 8)
+  if (size > 0xffffffff)
+    OMNIORB_THROW(MARSHAL, _OMNI_NS(MARSHAL_StringIsTooLong),
+                  CORBA::COMPLETED_NO);
+#endif
+  return (CORBA::ULong)size;
+}
+
+
 #if (PY_VERSION_HEX < 0x03000000) // Python 2
 
 #  define String_Check(o)                  PyString_Check(o)
@@ -48,7 +60,7 @@
 static inline const char*
 String_AS_STRING_AND_SIZE(PyObject* obj, CORBA::ULong& size)
 {
-  size = PyString_GET_SIZE(obj);
+  size = sizeToULong(PyString_GET_SIZE(obj));
   return PyString_AS_STRING(obj);
 }
 
@@ -61,7 +73,9 @@ String_AS_STRING_AND_SIZE(PyObject* obj, CORBA::ULong& size)
 
 #  define Int_Check(o)                      PyInt_Check(o)
 #  define Int_FromLong(l)                   PyInt_FromLong(l)
+#  define Int_FromSsize_t(l)                PyInt_FromSsize_t(l)
 #  define Int_AS_LONG(o)                    PyInt_AS_LONG(o)
+#  define Int_AsSsize_t(o)                  PyInt_AsSsize_t(o)
 
 #else // Python 3
 
@@ -74,11 +88,11 @@ String_AS_STRING_AND_SIZE(PyObject* obj, CORBA::ULong& size)
 #    define Unicode_GET_SIZE(o)              PyUnicode_GET_LENGTH(o)
 
 static inline const char*
-String_AS_STRING_AND_SIZE(PyObject* obj, CORBA::ULong& size)
+String_AS_STRING_AND_SIZE(PyObject* obj, CORBA::ULong& size)  // *** HERE
 {
   Py_ssize_t ss;
   const char* str = PyUnicode_AsUTF8AndSize(obj, &ss);
-  size = ss;
+  size = sizeToULong(ss);
   return str;
 }
 
@@ -99,7 +113,7 @@ String_AS_STRING_AND_SIZE(PyObject* obj, CORBA::ULong& size)
 
   PyArg_Parse(obj, (char*)"s#", &str, &ss);
 
-  size = ss;
+  size = sizeToULong(ss);
   return str;
 }
 
@@ -113,7 +127,7 @@ String_AS_STRING_AND_SIZE(PyObject* obj, CORBA::ULong& size)
 static inline const char*
 RawString_AS_STRING_AND_SIZE(PyObject* obj, CORBA::ULong& size)
 {
-  size = PyBytes_GET_SIZE(obj);
+  size = sizeToULong(PyBytes_GET_SIZE(obj));
   return PyBytes_AS_STRING(obj);
 }
 
@@ -130,7 +144,9 @@ RawString_AS_STRING_AND_SIZE(PyObject* obj, CORBA::ULong& size)
 
 #  define Int_Check(o)                     PyLong_Check(o)
 #  define Int_FromLong(l)                  PyLong_FromLong(l)
+#  define Int_FromSsize_t(l)               PyLong_FromSsize_t(l)
 #  define Int_AS_LONG(o)                   PyLong_AsLong(o)
+#  define Int_AsSsize_t(o)                 PyLong_AsSsize_t(o)
 
 #endif
 

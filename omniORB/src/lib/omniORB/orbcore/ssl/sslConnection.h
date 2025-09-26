@@ -30,7 +30,6 @@
 #define __SSLCONNECTION_H__
 
 #include <SocketCollection.h>
-#include <orbParameters.h>
 #include <openssl/ssl.h>
 
 OMNI_NAMESPACE_BEGIN(omni)
@@ -69,20 +68,22 @@ public:
   SocketHandle_t handle() const { return pd_socket; }
   ::SSL*         ssl_handle() const { return pd_ssl; }
 
-  sslConnection(SocketHandle_t,::SSL*,SocketCollection*);
+  sslConnection(SocketHandle_t, ::SSL*, SocketCollection*, CORBA::Boolean);
 
   ~sslConnection();
 
 
 private:
-  void setPeerDetails();
-
   ::SSL*            pd_ssl;
   CORBA::String_var pd_myaddress;
   CORBA::String_var pd_peeraddress;
   CORBA::String_var pd_peeridentity;
+  omni_tracedmutex  pd_lock;
+  CORBA::Boolean    pd_concurrent;
 
 protected:
+  void setPeerDetails();
+
   CORBA::Boolean           pd_handshake_ok;
   sslContext::PeerDetails* pd_peerdetails;
 };
@@ -93,7 +94,7 @@ public:
   giopActiveCollection* registerMonitor();
   giopConnection& getConnection();
 
-  sslActiveConnection(SocketHandle_t,::SSL*);
+  sslActiveConnection(SocketHandle_t, ::SSL*, CORBA::Boolean);
   ~sslActiveConnection();
 
 private:

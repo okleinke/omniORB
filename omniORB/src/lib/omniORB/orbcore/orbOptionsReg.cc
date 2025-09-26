@@ -47,11 +47,10 @@ static void parseConfigReg(orbOptions& opt, HKEY rootkey);
 static void parseOldConfigReg(orbOptions& opt, HKEY rootkey);
 
 CORBA::Boolean
-orbOptions::importFromRegistry() throw (orbOptions::Unknown,
-					orbOptions::BadParam) {
+orbOptions::importFromRegistry() {
 
-  char* rootregname;
-  HKEY  rootkey;
+  const char* rootregname;
+  HKEY        rootkey;
 
   rootregname = NEW_REGKEY;
   if (RegOpenKeyEx(HKEY_LOCAL_MACHINE,rootregname,0,

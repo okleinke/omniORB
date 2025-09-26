@@ -31,11 +31,11 @@
 
 #include <stddef.h>
 
-#if !defined(__atmos__) && !defined(_WIN32) && !defined(__VMS) && !defined(__rtems__) && !defined(__vxWorks__)
-#include <strings.h>
-#include <string.h>
+#if !defined(_WIN32) && !defined(__VMS) && !defined(__rtems__) && !defined(__vxWorks__)
+#  include <strings.h>
+#  include <string.h>
 #else
-#include <string.h>
+#  include <string.h>
 #endif
 #include <omniORB4/CORBA_sysdep.h>
 #include <omnithread.h>
@@ -79,8 +79,8 @@ class omniObjAdapter;
 //   the variable name stays the same with compatible shared library, e.g.
 //   2.5.1.
 //
-extern _core_attr const char* omniORB_4_2;
-extern _dyn_attr  const char* omniORB_4_2_dyn;
+extern _core_attr const char* omniORB_4_3;
+extern _dyn_attr  const char* omniORB_4_3_dyn;
 extern _core_attr const _CORBA_ULong omniORB_TAG_ORB_TYPE; // ATT\x00
 
 class Strand;
@@ -99,6 +99,7 @@ _CORBA_MODULE omni
 _CORBA_MODULE_BEG
 
   typedef omni_ptr_arith_t ptr_arith_t;
+  typedef omni_s_size_t    s_size_t;
 
   enum alignment_t { ALIGN_1 = 1, ALIGN_2 = 2, ALIGN_4 = 4, ALIGN_8 = 8 };
 
@@ -132,8 +133,9 @@ _CORBA_MODULE_BEG
   _CORBA_MODULE_FN inline _CORBA_ULong hash(const _CORBA_Octet* key,
 					    int keysize)
   {
-    _CORBA_ULong n = 0;
-    while( keysize-- )  n = ((n << 5) ^ (n >> 27)) ^ *key++;
+    // FNV-1a hash
+    _CORBA_ULong n = 0x811c9dc5;
+    while (keysize--) n = (n ^ *key++) * 0x1000193;
     return n;
   }
   // Computes a hash of the object key.  The caller must ensure

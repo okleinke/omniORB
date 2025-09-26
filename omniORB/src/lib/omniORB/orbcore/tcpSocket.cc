@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <omniORB4/CORBA.h>
 #include <omniORB4/omniURI.h>
+#include <omniORB4/connectionInfo.h>
 #include <SocketCollection.h>
 #include <libcWrapper.h>
 #include <orbParameters.h>
@@ -198,11 +199,16 @@ tcpSocket::Bind(const char*   	      	 host,
 		const char*   	      	 transport_type,
 		char*&  	         bound_host,
 		CORBA::UShort&           bound_port,
-		orbServer::EndpointList& endpoints)
+		orbServer::EndpointList& endpoints,
+                const char*              uri_prefix,
+                const char*              path_suffix)
 {
   SocketHandle_t sock;
   PassiveHost passive_host;
 
+  if (!uri_prefix)
+    uri_prefix = transport_type;
+  
   bound_host = 0;
 
   if (host && *host) {
@@ -387,8 +393,9 @@ tcpSocket::Bind(const char*   	      	 host,
 	  continue;
 	}
 	endpoints.length(addrs_len + 1);
-	endpoints[addrs_len++] = omniURI::buildURI(transport_type,
-						   *i, bound_port);
+	endpoints[addrs_len++] = omniURI::buildURI(uri_prefix,
+						   *i, bound_port,
+                                                   path_suffix);
 
 	if (!set_host) {
 	  bound_host = CORBA::string_dup(*i);
@@ -399,17 +406,19 @@ tcpSocket::Bind(const char*   	      	 host,
 	// No suitable addresses other than the loopback.
 	if (loopback4) {
 	  endpoints.length(addrs_len + 1);
-	  endpoints[addrs_len++] = omniURI::buildURI(transport_type,
+	  endpoints[addrs_len++] = omniURI::buildURI(uri_prefix,
 						     loopback4,
-						     bound_port);
+						     bound_port,
+                                                     path_suffix);
 	  bound_host = CORBA::string_dup(loopback4);
 	  set_host = 1;
 	}
 	if (loopback6) {
 	  endpoints.length(addrs_len + 1);
-	  endpoints[addrs_len++] = omniURI::buildURI(transport_type,
+	  endpoints[addrs_len++] = omniURI::buildURI(uri_prefix,
 						     loopback6,
-						     bound_port);
+						     bound_port,
+                                                     path_suffix);
 	  if (!set_host) {
 	    bound_host = CORBA::string_dup(loopback6);
 	    set_host = 1;
@@ -437,9 +446,9 @@ tcpSocket::Bind(const char*   	      	 host,
 	omniORB::logger log;
 	log << "My hostname is '" << self << "'.\n";
       }
-      LibcWrapper::AddrInfo_var ai;
-      ai = LibcWrapper::getAddrInfo(self, bound_port);
-      if ((LibcWrapper::AddrInfo*)ai == 0) {
+      LibcWrapper::AddrInfo_var aiv;
+      aiv = LibcWrapper::getAddrInfo(self, bound_port);
+      if ((LibcWrapper::AddrInfo*)aiv == 0) {
 	if (omniORB::trace(1)) {
 	  omniORB::logger log;
 	  log << "Cannot get the address of my hostname '"
@@ -448,10 +457,11 @@ tcpSocket::Bind(const char*   	      	 host,
 	CLOSESOCKET(sock);
 	return RC_INVALID_SOCKET;
       }
-      bound_host = ai->asString();
+      bound_host = aiv->asString();
       endpoints.length(1);
-      endpoints[0] = omniURI::buildURI(transport_type,
-				       bound_host, bound_port);
+      endpoints[0] = omniURI::buildURI(uri_prefix,
+				       bound_host, bound_port,
+                                       path_suffix);
     }
     if (omniORB::trace(1) &&
 	(omni::strMatch(bound_host, "127.0.0.1") ||
@@ -466,10 +476,16 @@ tcpSocket::Bind(const char*   	      	 host,
     // Specific host
     bound_host = CORBA::string_dup(host);
     endpoints.length(1);
-    endpoints[0] = omniURI::buildURI(transport_type,
-				     bound_host, bound_port);
+    endpoints[0] = omniURI::buildURI(uri_prefix,
+				     bound_host, bound_port,
+                                     path_suffix);
   }
 
+  if (ConnectionInfo::singleton) {
+    for (CORBA::ULong idx=0; idx != endpoints.length(); ++idx)
+      ConnectionInfo::set(ConnectionInfo::BIND, 0, endpoints[idx]);
+  }
+  
   OMNIORB_ASSERT(bound_host);
   OMNIORB_ASSERT(bound_port);
 
@@ -487,10 +503,12 @@ doConnect(const char*   	 host,
 	  const omni_time_t&     deadline,
 	  CORBA::ULong  	 strand_flags,
 	  LibcWrapper::AddrInfo* ai,
+	  const char*            transport_type,
 	  CORBA::Boolean&        timed_out)
 {
-  SocketHandle_t sock;
-
+  SocketHandle_t    sock;
+  CORBA::String_var addr_str;
+  
   if ((sock = socket(ai->addrFamily(), SOCK_STREAM, 0)) == RC_INVALID_SOCKET) {
     tcpSocket::logConnectFailure("Failed to create socket", ai);
     return RC_INVALID_SOCKET;
@@ -523,25 +541,42 @@ doConnect(const char*   	 host,
 
 #if !defined(USE_NONBLOCKING_CONNECT)
 
+  if (ConnectionInfo::singleton) {
+    addr_str = tcpSocket::addrToURI(ai->addr(), transport_type);
+    ConnectionInfo::set(ConnectionInfo::TRY_CONNECT, 0, addr_str);
+  }
+
   if (::connect(sock,ai->addr(),ai->addrSize()) == RC_SOCKET_ERROR) {
     tcpSocket::logConnectFailure("Failed to connect", ai);
+    ConnectionInfo::set(ConnectionInfo::CONNECT_FAILED, 1, addr_str);
+
     CLOSESOCKET(sock);
     return RC_INVALID_SOCKET;
   }
+  ConnectionInfo::set(ConnectionInfo::CONNECTED, 0, addr_str);
   return sock;
 
 #else
   if (tcpSocket::setNonBlocking(sock) == RC_INVALID_SOCKET) {
     tcpSocket::logConnectFailure("Failed to set socket to non-blocking mode",
 				 ai);
+    ConnectionInfo::set(ConnectionInfo::CONNECT_FAILED, 1, addr_str);
     CLOSESOCKET(sock);
     return RC_INVALID_SOCKET;
   }
+
+  if (ConnectionInfo::singleton) {
+    addr_str = tcpSocket::addrToURI(ai->addr(), transport_type);
+    ConnectionInfo::set(ConnectionInfo::TRY_CONNECT, 0, addr_str);
+  }
+
   if (::connect(sock,ai->addr(),ai->addrSize()) == RC_SOCKET_ERROR) {
 
     int err = ERRNO;
     if (err && err != RC_EINPROGRESS) {
       tcpSocket::logConnectFailure("Failed to connect", ai);
+      ConnectionInfo::set(ConnectionInfo::CONNECT_FAILED, 1, addr_str);
+
       CLOSESOCKET(sock);
       return RC_INVALID_SOCKET;
     }
@@ -554,6 +589,7 @@ doConnect(const char*   	 host,
     if (tcpSocket::setAndCheckTimeout(deadline, t)) {
       // Already timed out
       tcpSocket::logConnectFailure("Connect timed out", ai);
+      ConnectionInfo::set(ConnectionInfo::CONNECT_TIMED_OUT, 1, addr_str);
       CLOSESOCKET(sock);
       timed_out = 1;
       return RC_INVALID_SOCKET;
@@ -567,6 +603,7 @@ doConnect(const char*   	 host,
       continue;
 #else
       tcpSocket::logConnectFailure("Connect timed out", ai);
+      ConnectionInfo::set(ConnectionInfo::CONNECT_TIMED_OUT, 1, addr_str);
       CLOSESOCKET(sock);
       timed_out = 1;
       return RC_INVALID_SOCKET;
@@ -574,11 +611,13 @@ doConnect(const char*   	 host,
     }
     else if (rc == RC_SOCKET_ERROR) {
       if (ERRNO == RC_EINTR) {
+	SET_ERRNO(0);
 	continue;
       }
       else {
 	tcpSocket::logConnectFailure("Failed to connect "
                                      "(waiting for writable socket)", ai);
+        ConnectionInfo::set(ConnectionInfo::CONNECT_FAILED, 1, addr_str);
 	CLOSESOCKET(sock);
 	return RC_INVALID_SOCKET;
       }
@@ -591,10 +630,12 @@ doConnect(const char*   	 host,
 
     if (rc == RC_SOCKET_ERROR) {
       if (ERRNO == RC_EINTR) {
+	SET_ERRNO(0);
 	continue;
       }
       else {
 	tcpSocket::logConnectFailure("Failed to connect (no peer name)", ai);
+        ConnectionInfo::set(ConnectionInfo::CONNECT_FAILED, 1, addr_str);
 	CLOSESOCKET(sock);
 	return RC_INVALID_SOCKET;
       }
@@ -605,10 +646,12 @@ doConnect(const char*   	 host,
 
   if (tcpSocket::setBlocking(sock) == RC_INVALID_SOCKET) {
     tcpSocket::logConnectFailure("Failed to set socket to blocking mode", ai);
+    ConnectionInfo::set(ConnectionInfo::CONNECT_FAILED, 1, addr_str);
     CLOSESOCKET(sock);
     return RC_INVALID_SOCKET;
   }
 
+  ConnectionInfo::set(ConnectionInfo::CONNECTED, 0, addr_str);
   return sock;
 #endif
 }
@@ -619,11 +662,24 @@ tcpSocket::Connect(const char*        host,
 		   CORBA::UShort      port,
 		   const omni_time_t& deadline,
 		   CORBA::ULong       strand_flags,
+		   const char*        transport_type,
 		   CORBA::Boolean&    timed_out)
 {
   OMNIORB_ASSERT(host);
   OMNIORB_ASSERT(port);
 
+  CORBA::Boolean log_resolve =
+    ((omniORB::trace(25) || ConnectionInfo::singleton) &&
+     !LibcWrapper::isipaddr(host));
+
+  if (log_resolve) {
+    if (omniORB::trace(25)) {
+      omniORB::logger log;
+      log << "Resolve name '" << host << "'...\n";
+    }
+    ConnectionInfo::set(ConnectionInfo::RESOLVE_NAME, 0, host);
+  }
+  
   LibcWrapper::AddrInfo_var aiv;
   aiv = LibcWrapper::getAddrInfo(host, port);
 
@@ -634,19 +690,21 @@ tcpSocket::Connect(const char*        host,
       omniORB::logger log;
       log << "Unable to resolve: " << host << "\n";
     }
+    ConnectionInfo::set(ConnectionInfo::NAME_RESOLUTION_FAILED, 1, host);
     return RC_INVALID_SOCKET;
   }
 
   while (ai) {
-    if (omniORB::trace(25)) {
-      if (!LibcWrapper::isipaddr(host)) {
-	omniORB::logger log;
-	CORBA::String_var addr = ai->asString();
-	log << "Name '" << host << "' resolved: " << addr << "\n";
+    if (log_resolve) {
+      CORBA::String_var addr = ai->asString();
+      if (omniORB::trace(25)) {
+        omniORB::logger log;
+	log << "Name '" << host << "' resolved to " << addr << "\n";
       }
+      ConnectionInfo::set(ConnectionInfo::NAME_RESOLVED, 0, host, addr);
     }
-    SocketHandle_t sock = doConnect(host, port, deadline,
-				    strand_flags, ai, timed_out);
+    SocketHandle_t sock = doConnect(host, port, deadline, strand_flags,
+                                    ai, transport_type, timed_out);
     if (sock != RC_INVALID_SOCKET)
       return sock;
 
@@ -664,10 +722,17 @@ tcpSocket::Connect(const char*        host,
 		   CORBA::UShort      port,
 		   const omni_time_t& deadline,
 		   CORBA::ULong       strand_flags,
+		   const char*        transport_type,
 		   CORBA::Boolean&    timed_out)
 {
   OMNIORB_ASSERT(host);
   OMNIORB_ASSERT(port);
+
+  CORBA::String_var addr_str;
+  if (ConnectionInfo::singleton) {
+    addr_str = omniURI::buildURI(transport_type, host, port);
+    ConnectionInfo::set(ConnectionInfo::TRY_CONNECT, 0, addr_str);
+  }
 
   if (omniORB::trace(25)) {
     omniORB::logger log;
@@ -702,6 +767,8 @@ tcpSocket::Connect(const char*        host,
       omni_thread::get_time(now);
       if (now >= deadline) {
 	tcpSocket::logConnectFailure("Connect timed out", host, port);
+        ConnectionInfo::set(ConnectionInfo::CONNECT_TIMED_OUT, 1, addr_str);
+
 	CFRelease(wstream);
 	timed_out = 1;
 	return RC_INVALID_SOCKET;
@@ -720,6 +787,7 @@ tcpSocket::Connect(const char*        host,
       log << "Failed to open CFNetwork stream to "
           << host << ":" << port << "\n";
     }
+    ConnectionInfo::set(ConnectionInfo::CONNECT_FAILED, 1, addr_str);
     CFRelease(wstream);
     return RC_INVALID_SOCKET;
   }
@@ -747,6 +815,7 @@ tcpSocket::Connect(const char*        host,
 		   (char*)&valtrue,sizeof(int)) == RC_SOCKET_ERROR) {
       tcpSocket::logConnectFailure("Failed to set TCP_NODELAY option",
                                    host, port);
+      ConnectionInfo::set(ConnectionInfo::CONNECT_FAILED, 1, addr_str);
       CLOSESOCKET(sock);
       return RC_INVALID_SOCKET;
     }
@@ -762,6 +831,7 @@ tcpSocket::Connect(const char*        host,
 		   (char*)&bufsize, sizeof(bufsize)) == RC_SOCKET_ERROR) {
       tcpSocket::logConnectFailure("Failed to set socket send buffer",
                                    host, port);
+      ConnectionInfo::set(ConnectionInfo::CONNECT_FAILED, 1, addr_str);
       CLOSESOCKET(sock);
       return RC_INVALID_SOCKET;
     }
@@ -771,6 +841,7 @@ tcpSocket::Connect(const char*        host,
     if (tcpSocket::setAndCheckTimeout(deadline, t)) {
       // Already timed out
       tcpSocket::logConnectFailure("Connect timed out", host, port);
+      ConnectionInfo::set(ConnectionInfo::CONNECT_TIMED_OUT, 1, addr_str);
       CLOSESOCKET(sock);
       timed_out = 1;
       return RC_INVALID_SOCKET;
@@ -781,18 +852,21 @@ tcpSocket::Connect(const char*        host,
     if (rc == 0) {
       // Timed out
       tcpSocket::logConnectFailure("Connect timed out", host, port);
+      ConnectionInfo::set(ConnectionInfo::CONNECT_TIMED_OUT, 1, addr_str);
       CLOSESOCKET(sock);
       timed_out = 1;
       return RC_INVALID_SOCKET;
     }
     else if (rc == RC_SOCKET_ERROR) {
       if (ERRNO == RC_EINTR) {
+	SET_ERRNO(0);
 	continue;
       }
       else {
 	tcpSocket::logConnectFailure("Failed to connect "
                                      "(waiting for writable socket)",
                                      host, port);
+        ConnectionInfo::set(ConnectionInfo::CONNECT_FAILED, 1, addr_str);
 	CLOSESOCKET(sock);
 	return RC_INVALID_SOCKET;
       }
@@ -805,11 +879,13 @@ tcpSocket::Connect(const char*        host,
 
     if (rc == RC_SOCKET_ERROR) {
       if (ERRNO == RC_EINTR) {
+	SET_ERRNO(0);
 	continue;
       }
       else {
 	tcpSocket::logConnectFailure("Failed to connect (no peer name)",
                                      host, port);
+        ConnectionInfo::set(ConnectionInfo::CONNECT_FAILED, 1, addr_str);
 	CLOSESOCKET(sock);
 	return RC_INVALID_SOCKET;
       }
@@ -821,10 +897,12 @@ tcpSocket::Connect(const char*        host,
   if (tcpSocket::setBlocking(sock) == RC_INVALID_SOCKET) {
     tcpSocket::logConnectFailure("Failed to set socket to blocking mode",
                                  host, port);
+    ConnectionInfo::set(ConnectionInfo::CONNECT_FAILED, 1, addr_str);
     CLOSESOCKET(sock);
     return RC_INVALID_SOCKET;
   }
 
+  ConnectionInfo::set(ConnectionInfo::CONNECTED, 0, addr_str);
   return sock;
 }
 
@@ -919,7 +997,7 @@ tcpSocket::setCloseOnExec(SocketHandle_t sock)
 char*
 tcpSocket::addrToString(sockaddr* addr)
 {
-#if defined(HAVE_INET_NTOP)
+#if defined(OMNI_HAVE_INET_NTOP)
 
   char dest[80];
   const char* addrstr;
@@ -939,7 +1017,7 @@ tcpSocket::addrToString(sockaddr* addr)
 
   return CORBA::string_dup(addrstr);
 
-#elif defined (HAVE_GETNAMEINFO)
+#elif defined (OMNI_HAVE_GETNAMEINFO)
 
   char dest[80];
   socklen_t addrlen = 0;
@@ -985,7 +1063,7 @@ tcpSocket::addrToString(sockaddr* addr)
 char*
 tcpSocket::addrToURI(sockaddr* addr, const char* prefix)
 {
-#if defined(HAVE_INET_NTOP)
+#if defined(OMNI_HAVE_INET_NTOP)
 
   char dest[80];
   int port;
@@ -1014,7 +1092,7 @@ tcpSocket::addrToURI(sockaddr* addr, const char* prefix)
 
   return omniURI::buildURI(prefix, addrstr, port);
 
-#elif defined (HAVE_GETNAMEINFO)
+#elif defined (OMNI_HAVE_GETNAMEINFO)
 
   char dest[80];
   int port;

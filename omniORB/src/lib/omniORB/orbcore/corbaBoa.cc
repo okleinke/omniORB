@@ -163,11 +163,12 @@ const char* CORBA::BOA::_PD_repoId = "IDL:omg.org/CORBA/BOA:1.0";
 //////////////////////////////////////////////////////////////////////
 
 #define CHECK_NOT_NIL_OR_DESTROYED()  \
-  if( _NP_is_nil() )  _CORBA_invoked_nil_pseudo_ref();  \
-  if( pd_state == DESTROYED )  \
-    OMNIORB_THROW(OBJECT_NOT_EXIST,OBJECT_NOT_EXIST_BOANotInitialised, \
-		  CORBA::COMPLETED_NO);  \
-
+  do { \
+    if( _NP_is_nil() )  _CORBA_invoked_nil_pseudo_ref(); \
+    if( pd_state == DESTROYED )  \
+      OMNIORB_THROW(OBJECT_NOT_EXIST,OBJECT_NOT_EXIST_BOANotInitialised, \
+                    CORBA::COMPLETED_NO); \
+  } while(0)
 
 omniOrbBOA::~omniOrbBOA()
 {
@@ -599,8 +600,8 @@ omniOrbBOA::dispatch(omniCallHandle& handle, omniLocalIdentity* id)
 
   if( omniORB::traceInvocations ) {
     omniORB::logger l;
-    l << "Dispatching remote call \'" 
-      << handle.operation_name() << "\' to: "
+    l << "Dispatching remote call '" 
+      << handle.operation_name() << "' to: "
       << id << '\n';
   }
 
@@ -610,6 +611,12 @@ omniOrbBOA::dispatch(omniCallHandle& handle, omniLocalIdentity* id)
       OMNIORB_THROW(BAD_OPERATION,BAD_OPERATION_UnRecognisedOperationName,
 		    CORBA::COMPLETED_NO);
     }
+  }
+  if( omniORB::traceInvocationReturns ) {
+    omniORB::logger l;
+    l << "Return from remote call '"
+      << handle.operation_name() << "' to: "
+      << id << '\n';
   }
 }
 
@@ -1129,20 +1136,20 @@ omniORB::generateNewKey(omniORB::objectKey& k)
       // initialise the seed of the objectKey generator
       // Guarantee that no two keys generated on the same machine are the same
       // ever.
-#ifdef HAVE_GETTIMEOFDAY
+#ifdef OMNI_HAVE_GETTIMEOFDAY
       // Use gettimeofday() to obtain the current time. Use this to
       // initialise the 32-bit field hi and med in the seed.
       // On unices, add the process id to med.
       // Initialise lo to 0.
       struct timeval v;
-#ifdef GETTIMEOFDAY_TIMEZONE
+#ifdef OMNI_GETTIMEOFDAY_TIMEZONE
       gettimeofday(&v,0);
 #else
       gettimeofday(&v);
 #endif
       omniORB_seed.hi = v.tv_sec;
       omniORB_seed.med = (v.tv_usec << 12);
-#ifdef HAVE_GETPID
+#ifdef OMNI_HAVE_GETPID
       omniORB_seed.med += getpid();
 #else
       // without the process id, there is no guarantee that the keys generated
@@ -1207,16 +1214,7 @@ omniORB::generateNewKey(omniORB::objectKey& k)
 }
 
 
-omniORB::objectKey
-omniORB::nullkey()
-{
-  omniORB::objectKey n;
-  n.hi = n.med = n.lo = 0;
-  return n;
-}
-
-
-#if defined(HAS_Cplusplus_Namespace)
+#if defined(OMNI_HAS_Cplusplus_Namespace)
 namespace omniORB {
 #endif
 
@@ -1241,7 +1239,7 @@ operator!=(const omniORB::objectKey &k1,const omniORB::objectKey &k2)
 	  k1.lo != k2.lo) ? 1 : 0;
 }
 
-#if defined(HAS_Cplusplus_Namespace)
+#if defined(OMNI_HAS_Cplusplus_Namespace)
 }
 #endif
 

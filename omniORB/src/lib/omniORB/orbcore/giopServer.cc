@@ -406,11 +406,11 @@ giopServer::activate()
   }
 
   {
-    omnivector<giopActiveCollection*>::iterator i;
-    i = pd_bidir_collections.begin();
+    omnivector<giopActiveCollection*>::iterator it;
+    it = pd_bidir_collections.begin();
 
-    while (i != pd_bidir_collections.end()) {
-      giopMonitor* task = new giopMonitor(*i,this);
+    while (it != pd_bidir_collections.end()) {
+      giopMonitor* task = new giopMonitor(*it,this);
 
       if (!orbAsyncInvoker->insert(task)) {
 	// Cannot start serving this collection.
@@ -426,7 +426,7 @@ giopServer::activate()
       else {
 	task->insert(pd_bidir_monitors);
       }
-      pd_bidir_collections.erase(i);
+      pd_bidir_collections.erase(it);
     }
   }
 }
@@ -877,7 +877,7 @@ giopServer::notifyRzNewConnection(giopRendezvouser* r, giopConnection* conn)
 	  }
 	  delete task;
 	  {
-	    omni_tracedmutex_lock sync(*omniTransportLock);
+	    omni_tracedmutex_lock tlsync(*omniTransportLock);
 	    cs->strand->safeDelete();
 	  }
 	  csRemove(conn);
@@ -899,7 +899,7 @@ giopServer::notifyRzNewConnection(giopRendezvouser* r, giopConnection* conn)
 		<< " is not selectable. Closing it.\n";
 	  }
 	  {
-	    omni_tracedmutex_lock sync(*omniTransportLock);
+	    omni_tracedmutex_lock tlsync(*omniTransportLock);
 	    cs->strand->safeDelete();
 	  }
 	  csRemove(conn);
@@ -1052,7 +1052,7 @@ giopServer::removeConnectionAndWorker(giopWorker* w)
     // is therefore safe to delete this record.
     pd_lock.lock();
 
-    int workers;
+    CORBA::ULong   workers;
     CORBA::Boolean singleshot = w->singleshot();
 
     if (singleshot)
@@ -1388,7 +1388,7 @@ public:
 			"-ORBthreadPerConnectionPolicy < 0 | 1 >") {}
 
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::Boolean v;
     if (!orbOptions::getBoolean(value,v)) {
@@ -1416,7 +1416,7 @@ public:
 			1,
 			"-ORBthreadPerConnectionUpperLimit < n >= 1 >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v) || v < 1) {
@@ -1445,7 +1445,7 @@ public:
 			1,
 			"-ORBthreadPerConnectionLowerLimit < n >= 1 >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v) || v < 1) {
@@ -1473,7 +1473,7 @@ public:
 			1,
 			"-ORBmaxServerThreadPerConnection < n >= 1 >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v) || v < 1) {
@@ -1504,7 +1504,7 @@ public:
 			"-ORBthreadPoolWatchConnection < n >= 0 >") {}
 
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v)) {
@@ -1533,7 +1533,7 @@ public:
 			"-ORBconnectionWatchImmediate < 0 | 1 >") {}
 
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::Boolean v;
     if (!orbOptions::getBoolean(value,v)) {
@@ -1562,7 +1562,7 @@ public:
 			1,
 			"-ORBlistenBacklog < n >= 1 >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v) || v < 1) {

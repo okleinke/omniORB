@@ -218,13 +218,13 @@ cdrMemoryStream::setByteSwapFlag(CORBA::Boolean littleendian)
   pd_marshal_byte_swap = pd_unmarshal_byte_swap = (littleendian == ((CORBA::Boolean)omni::myByteOrder)) ? 0 : 1; 
 }
 
-CORBA::ULong
+size_t
 cdrMemoryStream::currentInputPtr() const
 {
   return ((omni::ptr_arith_t)pd_inb_mkr - (omni::ptr_arith_t)pd_bufp_8);
 }
 
-CORBA::ULong
+size_t
 cdrMemoryStream::currentOutputPtr() const
 {
   return ((omni::ptr_arith_t)pd_outb_mkr - (omni::ptr_arith_t)pd_bufp_8);
@@ -240,9 +240,9 @@ cdrMemoryStream::cdrMemoryStream(void* databuffer)
   pd_bufp = databuffer;
   pd_bufp_8 = databuffer;
 
-#if (SIZEOF_LONG == SIZEOF_PTR)
+#if (OMNI_SIZEOF_LONG == OMNI_SIZEOF_PTR)
   pd_inb_end = (void *) ULONG_MAX;
-#elif (SIZEOF_INT == SIZEOF_PTR)
+#elif (OMNI_SIZEOF_INT == OMNI_SIZEOF_PTR)
   pd_inb_end = (void *) UINT_MAX;
 #elif defined (_WIN64)
   pd_inb_end = (void *) _UI64_MAX;
@@ -569,13 +569,13 @@ cdrCountingStream::fetchInputData(omni::alignment_t,size_t)
 {
 }
 
-CORBA::ULong
+size_t
 cdrCountingStream::currentInputPtr() const 
 {
-  return (CORBA::ULong) pd_total;
+  return pd_total;
 }
 
-CORBA::ULong
+size_t
 cdrCountingStream::currentOutputPtr() const 
 { 
   return 0;

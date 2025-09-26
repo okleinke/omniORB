@@ -189,15 +189,17 @@ private:
 
 
 #define THROW_PY_BAD_PARAM(minor, completion, message) \
-  Py_BAD_PARAM::raise(__FILE__, __LINE__, minor, completion, message);
+  Py_BAD_PARAM::raise(__FILE__, __LINE__, minor, completion, message)
 
 
 // Useful macro
 #define RAISE_PY_BAD_PARAM_IF(x,minor) \
-  if (x) { \
-    CORBA::BAD_PARAM _ex(minor, CORBA::COMPLETED_NO); \
-    return omniPy::handleSystemException(_ex); \
-  }
+  do { \
+    if (x) { \
+      CORBA::BAD_PARAM _ex(minor, CORBA::COMPLETED_NO); \
+      return omniPy::handleSystemException(_ex); \
+    } \
+  } while(0)
 
 class omniPy {
 public:
@@ -216,6 +218,7 @@ public:
   static PyObject* py_omnipymodule;    	// _omnipy module
   static PyObject* py_pseudoFns;        //  pseudoFns
   static PyObject* py_policyFns;        //  policyFns
+  static PyObject* py_callInfoFns;      //  calInfoFns
   static PyObject* pyCORBAmodule;      	// CORBA module
   static PyObject* pyCORBAsysExcMap;   	//  The system exception map
   static PyObject* pyCORBAORBClass;    	//  ORB class
@@ -298,7 +301,6 @@ public:
   static void initFixed          (PyObject* d);
   static void initCallDescriptor (PyObject* d);
   static void initServant        (PyObject* d);
-  static void initTypeCode       (PyObject* d);
 
 
   ////////////////////////////////////////////////////////////////////////////
@@ -376,6 +378,11 @@ public:
 
     // Pointer operator used in some Python macros like PyInt_Check.
     inline PyObject* operator->()      { return obj_; }
+
+#ifdef PYPY_VERSION
+    // PyPy defines macros taking a void* rather than a PyObject*
+    inline operator void*()            { return obj_; }
+#endif
 
   private:
     PyObject* obj_;
@@ -466,13 +473,13 @@ public:
       long v = PyInt_AS_LONG(obj);
 
       if (v < 0
-#if SIZEOF_LONG > 4
+#if OMNI_SIZEOF_LONG > 4
           || v > 0xffffffff
 #endif
           ) {
         THROW_PY_BAD_PARAM(BAD_PARAM_WrongPythonType, completion,
                            formatString("Value %s out of range for ULong",
-                                        "O", obj))
+                                        "O", obj));
       }
       return (CORBA::ULong)v;
     }
@@ -485,7 +492,7 @@ public:
     unsigned long v = PyLong_AsUnsignedLong(obj);
 
     if (PyErr_Occurred() 
-#if SIZEOF_LONG > 4
+#if OMNI_SIZEOF_LONG > 4
         || v > 0xffffffff
 #endif
         ) {
@@ -1202,8 +1209,8 @@ public:
 
     inline void init()
     {
-      in_l_  = PyTuple_GET_SIZE(in_d_);
-      out_l_ = is_oneway() ? -1 : PyTuple_GET_SIZE(out_d_);
+      in_l_  = PyTuple_GET_SIZE(in_d_.obj());
+      out_l_ = is_oneway() ? -1 : PyTuple_GET_SIZE(out_d_.obj());
     }
 
     PyObject* makePoller();
@@ -1453,7 +1460,7 @@ public:
         InterpreterUnlocker u;
         s_.clearValueTracker();
       }
-    };
+    }
   private:
     cdrStream& s_;
   };
@@ -1490,7 +1497,7 @@ public:
 
 };
 
-#ifdef HAS_Cplusplus_catch_exception_by_base
+#ifdef OMNI_HAS_Cplusplus_catch_exception_by_base
 
 #define OMNIPY_CATCH_AND_HANDLE_SYSTEM_EXCEPTIONS \
 catch (Py_BAD_PARAM& ex) { \

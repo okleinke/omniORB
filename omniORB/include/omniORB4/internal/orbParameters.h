@@ -70,7 +70,7 @@ _CORBA_MODULE_VAR _core_attr GIOP::Version maxGIOPVersion;
 //
 //  Valid values = 1.0 | 1.1 | 1.2
 
-_CORBA_MODULE_VAR _core_attr CORBA::ULong giopMaxMsgSize;
+_CORBA_MODULE_VAR _core_attr size_t giopMaxMsgSize;
 //   This value defines the ORB-wide limit on the size of GIOP message 
 //   (excluding the header). If this limit is exceeded, the ORB will
 //   refuse to send or receive the message and raise a MARSHAL exception.
@@ -161,6 +161,22 @@ _CORBA_MODULE_VAR _core_attr CORBA::Boolean strictIIOP;
 //   strand as it tries to read more data from it. In this case the
 //   sender won't send any more as it thinks it has marshalled in all
 //   the data.
+//
+//   Valid values = 0 or 1
+//
+
+_CORBA_MODULE_VAR _core_attr CORBA::Boolean exceptionIdInAny;
+//   When an exception is transmitted inside an Any, should the
+//   repository id be transmitted at the start of the value?  The id
+//   is in the TypeCode, so the id is redundant inside the value, and
+//   the CORBA specification is not especially clear. The common
+//   interpretation of the CORBA specification is that the repository
+//   id should always be sent at the start of the marshalled exception
+//   value, even when inside an Any.
+//
+//   Versions of omniORB for C++ prior to 4.3 did not send the
+//   repository id when transmitting an exception inside an Any. Set
+//   this to false for compatibility with previous omniORB versions.
 //
 //   Valid values = 0 or 1
 //

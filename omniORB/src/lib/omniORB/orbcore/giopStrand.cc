@@ -529,6 +529,14 @@ giopStrand::releaseServer(IOP_S* iop_s)
       }
     }
   }
+  else if (isBiDir() && pd_state == DYING) {
+    if (omniORB::trace(25)) {
+      omniORB::logger log;
+      log << "Bi-directional strand " << (void*)this
+          << " is dying after handling a callback.\n";
+    }
+    startIdleCounter();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -607,7 +615,7 @@ Scavenger::removeIdle(StrandList& src,StrandList& dest,
 
     if ( s->idlebeats >= 0 ) {
 
-      if (omniORB::trace(30)) {
+      if (omniORB::trace(29)) {
 	omniORB::logger log;
 	log << "Scavenger reduce idle count for strand "
 	    << (void*)s << " to " << (s->idlebeats - 1) << "\n";
@@ -807,7 +815,7 @@ public:
 			1,
 			"-ORBscanGranularity < n >= 0 sec >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v)) {
@@ -835,7 +843,7 @@ public:
 			1,
 			"-ORBoutConScanPeriod < n >= 0 sec >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v)) {
@@ -863,7 +871,7 @@ public:
 			1,
 			"-ORBinConScanPeriod < n >= 0 sec >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::ULong v;
     if (!orbOptions::getULong(value,v)) {

@@ -43,6 +43,7 @@
 class omniObjRef;
 class omniServant;
 class omniCurrent;
+class omniCallHandle;
 
 OMNI_NAMESPACE_BEGIN(omni)
 class omniOrbPOA;
@@ -88,11 +89,13 @@ public:
       pd_is_oneway(oneway),
       pd_is_upcall(is_upcall_),
       pd_contains_values(0),
+      pd_called(0),
       pd_first_address_used(0),
       pd_current_address(0),
       pd_objref(0),
       pd_poa(0),
-      pd_localId(0)
+      pd_localId(0),
+      pd_callHandle(0)
   {}
 
   virtual ~omniCallDescriptor() {}
@@ -167,6 +170,8 @@ public:
   inline const char* const* user_excns()   { return pd_user_excns;   }
   inline int n_user_excns()                { return pd_n_user_excns; }
   inline _CORBA_Boolean is_upcall() const  { return pd_is_upcall;    }
+  inline _CORBA_Boolean called() const     { return pd_called;       }
+  inline void called(_CORBA_Boolean c)     { pd_called = c;          }
 
   inline _CORBA_Boolean haslocalCallFn() const {
     return (pd_local_call) ? 1 : 0;
@@ -215,12 +220,17 @@ public:
   // Current support //
   /////////////////////
 
+  static omniCallDescriptor* current();
+  // Return the call descriptor for the current thread.
+  
   inline void objref(omniObjRef* o)           { pd_objref = o; }
   inline omniObjRef* objref()                 { return pd_objref; }
   inline void poa(_OMNI_NS(omniOrbPOA*) poa_) { pd_poa = poa_; }
   inline _OMNI_NS(omniOrbPOA*) poa()          { return pd_poa; }
   inline void localId(omniLocalIdentity* lid) { pd_localId = lid; }
   inline omniLocalIdentity* localId()         { return pd_localId; }
+  inline void callHandle(omniCallHandle* ch)  { pd_callHandle = ch; }
+  inline omniCallHandle* callHandle()         { return pd_callHandle; }
 
 
   //////////////////////////////
@@ -241,6 +251,7 @@ private:
   _CORBA_Boolean               pd_is_oneway;
   _CORBA_Boolean               pd_is_upcall;
   _CORBA_Boolean               pd_contains_values;
+  _CORBA_Boolean               pd_called;
 
   const _OMNI_NS(giopAddress)* pd_first_address_used;
   const _OMNI_NS(giopAddress)* pd_current_address;
@@ -269,7 +280,8 @@ private:
 
   _OMNI_NS(omniOrbPOA*)        pd_poa;
   omniLocalIdentity*           pd_localId;
-  // Both always set on the way through the POA during an upcall.
+  omniCallHandle*              pd_callHandle;
+  // Always set on the way through the POA during an upcall.
 
   ////////////////////////////
   // Deadline for this call //

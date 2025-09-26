@@ -3,7 +3,7 @@
 // CORBA_sysdep.h             Created on: 30/1/96
 //                            Author    : Sai Lai Lo (sll)
 //
-//    Copyright (C) 2003-2012 Apasphere Ltd
+//    Copyright (C) 2003-2022 Apasphere Ltd
 //    Copyright (C) 1996-1999 AT&T Laboratories Cambridge
 //
 //    This file is part of the omniORB library
@@ -60,12 +60,15 @@
 // Pointer arithmetic type
 //
 
-#if SIZEOF_PTR == SIZEOF_LONG
+#if OMNI_SIZEOF_PTR == OMNI_SIZEOF_LONG
 typedef unsigned long omni_ptr_arith_t;
-#elif SIZEOF_PTR == SIZEOF_INT
+typedef long omni_s_size_t;
+#elif OMNI_SIZEOF_PTR == OMNI_SIZEOF_INT
 typedef unsigned int omni_ptr_arith_t;
+typedef int omni_s_size_t;
 #elif defined (_WIN64)
 typedef size_t omni_ptr_arith_t;
+typedef __int64 omni_s_size_t;
 #else
 #error "No suitable type to do pointer arithmetic"
 #endif
@@ -89,7 +92,7 @@ typedef size_t omni_ptr_arith_t;
 // __VFP_FP__ means that the floating point format in use is that of the ARM 
 // VFP unit, which is native-endian IEEE-754.
 #if defined(__arm__)
-#  if defined(__armv5teb__) || defined(__VFP_FP__)
+#  if defined(__armv5teb__) || defined(__VFP_FP__) || defined(__aarch64__) || defined(__arm64__)
 #    define NO_OMNI_MIXED_ENDIAN_DOUBLE
 #  else
 #    define OMNI_MIXED_ENDIAN_DOUBLE
@@ -98,9 +101,22 @@ typedef size_t omni_ptr_arith_t;
 
 
 //
+// Attributes
+// 
+
+#if __cplusplus >= 201703L
+#  define OMNI_MAYBE_UNUSED [[maybe_unused]]
+
+#else
+#  define OMNI_MAYBE_UNUSED
+
+#endif
+
+
+//
 // Macro to provide const_cast functionality on all platforms.
 //
-#ifdef HAS_Cplusplus_const_cast
+#ifdef OMNI_HAS_Cplusplus_const_cast
 #  define OMNI_CONST_CAST(_t, _v) const_cast< _t >(_v)
 #  define OMNI_CONST_VOID_CAST(_v) const_cast<void*>(static_cast<const void*>(_v))
 #else
@@ -108,7 +124,7 @@ typedef size_t omni_ptr_arith_t;
 #  define OMNI_CONST_VOID_CAST(_v) (void*)(_t)
 #endif
 
-#ifdef HAS_Cplusplus_reinterpret_cast
+#ifdef OMNI_HAS_Cplusplus_reinterpret_cast
 #  define OMNI_REINTERPRET_CAST(_t, _v) reinterpret_cast< _t const& >(_v)
 #else
 #  define OMNI_REINTERPRET_CAST(_t, _v) (*(_t*)(&_v))
@@ -117,7 +133,7 @@ typedef size_t omni_ptr_arith_t;
 
 #if defined(__GNUG__)
 // GNU G++ compiler
-#  define NEED_DUMMY_RETURN
+#  define OMNI_NEED_DUMMY_RETURN
 #endif
 
 #if defined(__DECCXX)
@@ -131,7 +147,7 @@ typedef size_t omni_ptr_arith_t;
 #     ifdef __VMS
 #       pragma message disable CANTCOMPLETE
 #     endif
-#     define NEED_DUMMY_RETURN
+#     define OMNI_NEED_DUMMY_RETURN
 #     define OMNI_OPERATOR_REFPTR_REQUIRES_TYPEDEF
 #     define OMNI_PREMATURE_INSTANTIATION
 //    Extra macros from the Compaq C++ 5.x patch (in <top>/patches/) to be
@@ -144,7 +160,7 @@ typedef size_t omni_ptr_arith_t;
 
 #if defined(__SUNPRO_CC) 
 // SUN C++ compiler
-#  define NEED_DUMMY_RETURN
+#  define OMNI_NEED_DUMMY_RETURN
 
 // XXX
 // This is a hack to work around a bug in SUN C++ compiler (seen on 4.2).
@@ -166,7 +182,7 @@ typedef size_t omni_ptr_arith_t;
 #endif
 
 #if defined(__HP_aCC) || ( defined(__hpux__) && !defined(__GNUG__) )
-#  define NEED_DUMMY_RETURN
+#  define OMNI_NEED_DUMMY_RETURN
 #endif
 
 #if defined(__hpux__) && __OSVERSION__ < 11
@@ -183,7 +199,7 @@ typedef size_t omni_ptr_arith_t;
 
 #if defined(__aix__) && defined(__xlC__)
 #  define OMNI_NO_INLINE_FRIENDS
-#  define NEED_DUMMY_RETURN
+#  define OMNI_NEED_DUMMY_RETURN
 #endif
 
 
@@ -198,7 +214,7 @@ typedef size_t omni_ptr_arith_t;
 
 #if defined(_MSC_VER)
 
-#  define NEED_DUMMY_RETURN
+#  define OMNI_NEED_DUMMY_RETURN
 
 // VC.NET 2003 (v. 7.1) has problems recognizing inline friend
 // operators.
@@ -249,7 +265,7 @@ typedef size_t omni_ptr_arith_t;
 #  pragma warning(disable: 4250)
 
 #elif defined(__DMC__)
-#  define NEED_DUMMY_RETURN
+#  define OMNI_NEED_DUMMY_RETURN
 
 #  ifdef _WINSTATIC
 #    define _OMNIORB_NTDLL_IMPORT
@@ -350,7 +366,7 @@ typedef size_t omni_ptr_arith_t;
 #endif
 
 
-#ifdef HAS_Cplusplus_Namespace
+#ifdef OMNI_HAS_Cplusplus_Namespace
 
 #  define _CORBA_MODULE        namespace
 #  define _CORBA_MODULE_BEG    {
@@ -421,7 +437,7 @@ typedef size_t omni_ptr_arith_t;
 #  define _init_in_cldecl_(x)
 #  define _init_in_cldef_(x) x
 
-#endif // HAS_Cplusplus_Namespace
+#endif // OMNI_HAS_Cplusplus_Namespace
 
 
 #ifdef OMNI_REQUIRES_FQ_BASE_CTOR

@@ -33,7 +33,7 @@
 // Lock tracing is controlled by autoconf, or in the dummy
 // omniconfig.h.  You can override it here if you wish.
 
-//#define OMNIORB_ENABLE_LOCK_TRACES
+//#define OMNI_ENABLE_LOCK_TRACES
 
 
 //////////////////////////////////////////////////////////////////////
@@ -133,6 +133,9 @@
 // giopStream::dumpbuf::lock
 //   Ensures only one thread is dumping a buffer at a time.
 //
+// httpCrypto::httpCryptoManager_AES_RSA_impl::pd_lock
+//   Protects state of crypto manager.
+//
 // initRefs ba_lock
 //   Protects bootstrap agent.
 //
@@ -211,7 +214,7 @@
 ////////////////////////// omni_tracedmutex //////////////////////////
 //////////////////////////////////////////////////////////////////////
 
-#ifndef OMNIORB_ENABLE_LOCK_TRACES
+#ifndef OMNI_ENABLE_LOCK_TRACES
 
 #define ASSERT_OMNI_TRACEDMUTEX_HELD(m, yes)
 
@@ -305,7 +308,7 @@ private:
 #define ASSERT_OMNI_TRACEDMUTEX_HELD(m, yes)  \
   (m).assert_held(__FILE__, __LINE__, (yes))
 
-// #ifndef OMNIORB_ENABLE_LOCK_TRACES
+// #ifndef OMNI_ENABLE_LOCK_TRACES
 #endif
 
 

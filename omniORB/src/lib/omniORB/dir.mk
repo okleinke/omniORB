@@ -1,9 +1,9 @@
 # dir.mk for omniORB.
 #
 
-PYSUBDIR = $(shell $(PYTHON) -c 'import sys; sys.stdout.write(sys.version[0] == "3" and "python3" or "python")')
+PYSUBDIR = $(shell $(PYTHON) -c 'import sys; sys.stdout.write(sys.version[0] == "3" and "python3" or "python2")')
 
-ifndef EmbeddedSystem
+ifndef CrossCompiling
 SUBDIRS = $(PYSUBDIR)
 endif
 
@@ -14,6 +14,12 @@ SUBDIRS += dynamic codesets connections
 
 ifdef EnableZIOP
 SUBDIRS += ziop ziopdynamic
+endif
+
+ifdef EnableHTTPCrypto
+ifdef OPEN_SSL_ROOT
+SUBDIRS += httpcrypto
+endif
 endif
 
 endif
@@ -87,7 +93,7 @@ endif
 ######################################################################
 
 ifdef DisableLongDouble
-UNDEFINES = -UHAS_LongDouble
+UNDEFINES = -UOMNI_HAS_LongDouble
 endif
 
 OMNIORB_IDL += -p$(BASE_OMNI_TREE)/src/lib/omniORB/$(PYSUBDIR) -I$(BASE_OMNI_TREE)/idl -Wbdebug

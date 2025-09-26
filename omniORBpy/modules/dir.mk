@@ -53,6 +53,8 @@ DIR_CPPFLAGS += $(patsubst %,-I%/include/omniORB4/internal,$(IMPORT_TREES))
 
 all:: pydistdate.hh
 
+omnipy.o: pydistdate.hh
+
 pydistdate.hh: ../update.log
 	$(PYTHON) $(BASE_OMNI_TREE)/bin/scripts/distdate.py OMNIORBPY <$^ >pydistdate.hh
 
@@ -133,17 +135,13 @@ else
 
 ifdef Win32Platform
 
-PYPREFIX1 := "$(shell $(PYTHON) -c 'import sys,string; sys.stdout.write(sys.prefix.lower())')"
-PYPREFIX  := $(subst program files,progra~1,$(subst \,/,$(PYPREFIX1)))
-PYVERSION := $(shell $(PYTHON) -c 'import sys; sys.stdout.write(chr(46).join(map(str,sys.version_info[0:2])))')
-PYINCDIR  := $(PYPREFIX)/include
 PYLIBDIR  := $(PYPREFIX)/libs
 PYLIB     := python$(subst .,,$(PYVERSION)).lib
 
 DIR_CPPFLAGS += -I$(PYINCDIR) -I$(PYINCDIR)/python$(PYVERSION) \
                 -DPYTHON_INCLUDE="<Python.h>" -DPYTHON_THREAD_INC="<pythread.h>"
 
-PYLIBPATH = $(patsubst %,-libpath:%,$(PYLIBDIR))
+PYLIBPATH = -libpath:$(PYLIBDIR)
 
 implib = _omnipy.lib
 lib = $(patsubst %.lib,%.pyd,$(implib))
@@ -518,8 +516,14 @@ endif
 SUBDIRS = codesets connections
 
 ifdef OPEN_SSL_ROOT
-SUBDIRS += sslTP
+SUBDIRS += httpTP sslTP
+
+ifdef EnableHTTPCrypto
+SUBDIRS += httpCrypto
 endif
+
+endif
+
 
 ifdef EnableZIOP
 SUBDIRS += ziop

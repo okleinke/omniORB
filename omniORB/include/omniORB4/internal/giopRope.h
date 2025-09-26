@@ -222,6 +222,7 @@ public:
  protected:
   int                      pd_refcount;
   giopAddressList          pd_addresses;     // Addresses of the remote server
+  giopAddressList          pd_dead_addresses;// Addresses to delete when safe
   size_t                   pd_ior_addr_size; // Number of addresses in IOR
   omnivector<CORBA::ULong> pd_addresses_order;
   size_t                   pd_address_in_use;
@@ -260,6 +261,13 @@ public:
   //
   // Caller holds omniTransportLock.
 
+  void deleteDeadAddresses(giopStrand* strand);
+  // Delete any dead giopAddress objects in pd_dead_addresses that are
+  // not in use by any active strands. If non-zero, strand is a
+  // pointer to a strand that is not considered active.
+  //
+  // Caller holds omniTransportLock.
+  
  private:
   giopRope();
   giopRope(const giopRope&);

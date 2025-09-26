@@ -42,7 +42,7 @@
 
 OMNI_USING_NAMESPACE(omni)
 
-#if defined(HAS_Cplusplus_Namespace)
+#if defined(OMNI_HAS_Cplusplus_Namespace)
 using omniORB::operator==;
 #endif
 
@@ -154,7 +154,7 @@ omniPy::createPyCorbaObjRef(const char*             targetRepoId,
   OMNIORB_ASSERT(objrefClass); // Couldn't even find CORBA.Object!
 
   omniPy::PyRefHolder args(PyTuple_New(1));
-  PyTuple_SET_ITEM(args, 0, createPyObjRefObject(objref));
+  PyTuple_SET_ITEM(args.obj(), 0, createPyObjRefObject(objref));
 
   PyObject* pyobjref = PyObject_CallObject(objrefClass, args);
 
@@ -223,7 +223,7 @@ omniPy::createPyPseudoObjRef(const CORBA::Object_ptr objref)
       if (ret)
 	return ret;
     }
-  };
+  }
 
   try {
     // Use OMNIORB_THROW to get a nice trace message
@@ -299,7 +299,7 @@ omniPy::createObjRef(const char*    	targetRepoId,
 
     for (CORBA::ULong index = 0; index < extra.length(); index++) {
 
-      if (extra[index]->compid == IOP::TAG_OMNIORB_PERSISTENT_ID)
+      if (extra[index]->compid == IOP::TAG_OMNIORB_PERSISTENT_ID) {
 
 	if (!id->inThisAddressSpace()) {
 
@@ -319,6 +319,7 @@ omniPy::createObjRef(const char*    	targetRepoId,
 	  releaseObjRef(objref);
 	  objref = new_objref;
 	}
+      }
       break;
     }
   }

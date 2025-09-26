@@ -25,12 +25,8 @@
 #include <omniORB4/Naming.hh>
 #include <omniORB4/omniURI.h>
 
-#ifdef HAVE_STD
-#  include <iostream>
-   using namespace std;
-#else
-#  include <iostream.h>
-#endif
+#include <iostream>
+using namespace std;
 
 OMNI_USING_NAMESPACE(omni)
 
@@ -602,27 +598,27 @@ main(int argc, char **argv)
       goto error_return;
     }
 
-    catch (CosNaming::NamingContext::InvalidName) {
+    catch (CosNaming::NamingContext::InvalidName&) {
       cerr << command << ": InvalidName exception" << endl;
       goto error_return;
     }
 
-    catch (CosNaming::NamingContext::AlreadyBound) {
+    catch (CosNaming::NamingContext::AlreadyBound&) {
       cerr << command << ": AlreadyBound exception" << endl;
       goto error_return;
     }
 
-    catch (CosNaming::NamingContext::NotEmpty) {
+    catch (CosNaming::NamingContext::NotEmpty&) {
       cerr << command << ": NotEmpty exception" << endl;
       goto error_return;
     }
 
-    catch (CosNaming::NamingContext::CannotProceed) {
+    catch (CosNaming::NamingContext::CannotProceed&) {
       cerr << command << ": CannotProceed exception" << endl;
       goto error_return;
     }
 
-    catch (CORBA::TRANSIENT) {
+    catch (CORBA::TRANSIENT&) {
       cerr << command 
 	   << ": Cannot contact the Naming Service because of "
 	   << "TRANSIENT exception." << endl

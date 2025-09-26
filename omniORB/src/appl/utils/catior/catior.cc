@@ -36,16 +36,11 @@
 #include <omniORB4/IOP.h>
 #include <omniORB4/omniURI.h>
 
-#ifdef HAVE_STD
-#  include <iostream>
-#  include <iomanip>
-   using namespace std;
-#else
-#  include <iostream.h>
-#  include <iomanip.h>
-#endif
+#include <iostream>
+#include <iomanip>
+using namespace std;
 
-#ifdef HAVE_UNISTD_H
+#ifdef OMNI_HAVE_UNISTD_H
 #  include <unistd.h>
 #endif
 
@@ -81,7 +76,7 @@ static void usage(char* progname)
 }
 
 
-#ifdef HAVE_GETOPT
+#ifdef OMNI_HAVE_GETOPT
 
 extern char* optarg;
 extern int optind;
@@ -140,7 +135,7 @@ getopt(int num_args, char* const* args, const char* optstring)
   return '?';
 }
 
-#endif  // !HAVE_GETOPT
+#endif  // !OMNI_HAVE_GETOPT
 
 
 #define POA_NAME_SEP            '\xff'
@@ -655,8 +650,11 @@ print_tag_policies(IOP::TaggedComponent& c)
           case 9:
             cout << "XAR";
             break;
+          case 101:
+            cout << "ZSTD";
+            break;
           default:
-            cout << "unknown";
+            cout << "unknown (" << compressor_id << ")";
             break;
           }
           cout << ", level " << compression_level << endl;
@@ -843,6 +841,17 @@ print_tag_omniorb_unix_trans(const IOP::TaggedComponent& c)
 
 static
 void
+print_tag_omniorb_http_trans(const IOP::TaggedComponent& c)
+{
+  cdrEncapsulationStream e(c.component_data, 1);
+
+  CORBA::String_var url = e.unmarshalRawString();
+
+  cout << "      TAG_OMNIORB_HTTP_TRANS " << url << endl;
+}
+
+static
+void
 print_tag_omniorb_persistent_id(const IOP::TaggedComponent& c)
 {
   cout << "      TAG_OMNIORB_PERSISTENT_ID ";
@@ -936,6 +945,10 @@ print_tagged_components(IOP::MultipleComponentProfile& components)
 
       case 0x41545404: // TAG_OMNIORB_RESTRICTED_CONNECTION
         print_tag_omniorb_restricted_connection(c);
+        break;
+
+      case 0x41545405: // TAG_OMNIORB_HTTP_TRANS
+        print_tag_omniorb_http_trans(c);
         break;
 
       default:

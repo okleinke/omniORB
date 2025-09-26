@@ -311,7 +311,7 @@ omniPy::getLocalObjectForPyObject(PyObject* pyobj)
 {
   PyRefHolder pyrepoId(PyObject_GetAttrString(pyobj,(char*)"_NP_RepositoryId"));
 
-  if (!(pyrepoId.valid() && String_Check(pyrepoId)))
+  if (!(pyrepoId.valid() && String_Check(pyrepoId.obj())))
     return 0;
 
   const char* repoId = String_AS_STRING(pyrepoId.obj());
@@ -377,16 +377,19 @@ Py_ServantActivator::incarnate(const PortableServer::ObjectId& oid,
 		  CORBA::COMPLETED_MAYBE);
   }
   PortableServer::POA::_duplicate(poa);
+
+#if (PY_VERSION_HEX < 0x03000000) // Python 2
   argtuple = Py_BuildValue((char*)"s#N",
 			   (const char*)oid.NP_data(), oid.length(),
 			   omniPy::createPyPOAObject(poa));
-
-  // Do the up-call
-#if (PY_VERSION_HEX >= 0x03070000) // Python 3.7 or later
-  pyservant = PyObject_CallObject(method, argtuple);
-#else // Python 3.0 - 3.6
-  pyservant = PyEval_CallObject(method, argtuple);
+#else
+  argtuple = Py_BuildValue((char*)"y#N",
+			   (const char*)oid.NP_data(), oid.length(),
+			   omniPy::createPyPOAObject(poa));
 #endif
+  
+  // Do the up-call
+  pyservant = PyObject_CallObject(method, argtuple);
   Py_DECREF(method);
   Py_DECREF(argtuple);
 
@@ -492,18 +495,25 @@ Py_ServantActivator::etherealize(const PortableServer::ObjectId& oid,
 		  CORBA::COMPLETED_NO);
   }
   PortableServer::POA::_duplicate(poa);
+
+#if (PY_VERSION_HEX < 0x03000000) // Python 2
   argtuple = Py_BuildValue((char*)"s#NNii",
 			   (const char*)oid.NP_data(), oid.length(),
 			   omniPy::createPyPOAObject(poa),
 			   pyos->pyServant(),
 			   (int)cleanup_in_progress,
 			   (int)remaining_activations);
-  // Do the up-call
-#if (PY_VERSION_HEX >= 0x03070000) // Python 3.7 or later
-  result = PyObject_CallObject(method, argtuple);
-#else // Python 3.0 - 3.6
-  result = PyEval_CallObject(method, argtuple);
+#else
+  argtuple = Py_BuildValue((char*)"y#NNii",
+			   (const char*)oid.NP_data(), oid.length(),
+			   omniPy::createPyPOAObject(poa),
+			   pyos->pyServant(),
+			   (int)cleanup_in_progress,
+			   (int)remaining_activations);
 #endif
+  
+  // Do the up-call
+  result = PyObject_CallObject(method, argtuple);
   Py_DECREF(method);
   Py_DECREF(argtuple);
 
@@ -543,17 +553,21 @@ Py_ServantLocator::preinvoke(const PortableServer::ObjectId& oid,
 		  CORBA::COMPLETED_NO);
   }
   PortableServer::POA::_duplicate(poa);
+
+#if (PY_VERSION_HEX < 0x03000000) // Python 2
   argtuple = Py_BuildValue((char*)"s#Ns",
 			   (const char*)oid.NP_data(), oid.length(),
 			   omniPy::createPyPOAObject(poa),
 			   operation);
-
-  // Do the up-call
-#if (PY_VERSION_HEX >= 0x03070000) // Python 3.7 or later
-  rettuple = PyObject_CallObject(method, argtuple);
-#else // Python 3.0 - 3.6
-  rettuple = PyEval_CallObject(method, argtuple);
+#else
+  argtuple = Py_BuildValue((char*)"y#Ns",
+			   (const char*)oid.NP_data(), oid.length(),
+			   omniPy::createPyPOAObject(poa),
+			   operation);
 #endif
+  
+  // Do the up-call
+  rettuple = PyObject_CallObject(method, argtuple);
   Py_DECREF(method);
   Py_DECREF(argtuple);
 
@@ -670,18 +684,25 @@ Py_ServantLocator::postinvoke(const PortableServer::ObjectId& oid,
 		  CORBA::COMPLETED_NO);
   }
   PortableServer::POA::_duplicate(poa);
+
+#if (PY_VERSION_HEX < 0x03000000) // Python 2
   argtuple = Py_BuildValue((char*)"s#NsNN",
 			   (const char*)oid.NP_data(), oid.length(),
 			   omniPy::createPyPOAObject(poa),
 			   operation,
 			   (PyObject*)cookie,
 			   pyos->pyServant());
-  // Do the up-call
-#if (PY_VERSION_HEX >= 0x03070000) // Python 3.7 or later
-  result = PyObject_CallObject(method, argtuple);
-#else // Python 3.0 - 3.6
-  result = PyEval_CallObject(method, argtuple);
+#else
+  argtuple = Py_BuildValue((char*)"y#NsNN",
+			   (const char*)oid.NP_data(), oid.length(),
+			   omniPy::createPyPOAObject(poa),
+			   operation,
+			   (PyObject*)cookie,
+			   pyos->pyServant());
 #endif
+
+  // Do the up-call
+  result = PyObject_CallObject(method, argtuple);
   Py_DECREF(method);
   Py_DECREF(argtuple);
 
@@ -716,11 +737,7 @@ Py_AdapterActivator::unknown_adapter(PortableServer::POA_ptr parent,
 			   omniPy::createPyPOAObject(parent), name);
 
   // Do the up-call
-#if (PY_VERSION_HEX >= 0x03070000) // Python 3.7 or later
   pyresult = PyObject_CallObject(method, argtuple);
-#else // Python 3.0 - 3.6
-  pyresult = PyEval_CallObject(method, argtuple);
-#endif
   Py_DECREF(method);
   Py_DECREF(argtuple);
 

@@ -48,20 +48,9 @@ dealWithUserException(cdrMemoryStream& stream,
 		      CORBA::UserException& ex);
 
 
-#ifdef HAS_Cplusplus_Namespace
+#ifdef OMNI_HAS_Cplusplus_Namespace
 namespace {
 #endif
-  class PostInvoker {
-  public:
-    inline PostInvoker(omniCallHandle::PostInvokeHook* hook)
-      : pd_hook(hook) {}
-    inline ~PostInvoker() {
-      if (pd_hook)
-	pd_hook->postinvoke();
-    }
-  private:
-    omniCallHandle::PostInvokeHook* pd_hook;
-  };
 
   class MainThreadTask : public omniTask {
   public:
@@ -98,10 +87,20 @@ namespace {
     int                   pd_done;
   };
 
-#ifdef HAS_Cplusplus_Namespace
+#ifdef OMNI_HAS_Cplusplus_Namespace
 }
 #endif
 
+
+static inline void
+callPostInvokeHook(omniCallHandle::PostInvokeHook*& hook)
+{
+  if (hook) {
+    omniCallHandle::PostInvokeHook* h = hook;
+    hook = 0;
+    h->postinvoke();
+  }
+}
 
 void
 omniCallHandle::upcall(omniServant* servant, omniCallDescriptor& desc)
@@ -109,14 +108,16 @@ omniCallHandle::upcall(omniServant* servant, omniCallDescriptor& desc)
   OMNIORB_ASSERT(pd_localId);
   desc.poa(pd_poa);
   desc.localId(pd_localId);
+  desc.callHandle(this);
 
   _OMNI_NS(poaCurrentStackInsert) insert(&desc, pd_self_thread);
 
+  PostInvokeHook* hook = pd_postinvoke_hook;
+
   if (pd_iop_s) { // Remote call
     pd_iop_s->ReceiveRequest(desc);
-    {
-      PostInvoker postinvoker(pd_postinvoke_hook);
 
+    try {
       if (!pd_mainthread_mu) {
 	desc.doLocalCall(servant);
       }
@@ -127,6 +128,11 @@ omniCallHandle::upcall(omniServant* servant, omniCallDescriptor& desc)
 	int i = _OMNI_NS(orbAsyncInvoker)->insert(&mtt); OMNIORB_ASSERT(i);
 	mtt.wait();
       }
+      callPostInvokeHook(hook);
+    }
+    catch (...) {
+      callPostInvokeHook(hook);
+      throw;
     }
     pd_iop_s->SendReply();
   }
@@ -134,17 +140,23 @@ omniCallHandle::upcall(omniServant* servant, omniCallDescriptor& desc)
 
     if (pd_call_desc == &desc) {
       // Fast case -- call descriptor can invoke directly on the servant
-      PostInvoker postinvoker(pd_postinvoke_hook);
 
-      if (!pd_mainthread_mu) {
-	desc.doLocalCall(servant);
+      try {
+        if (!pd_mainthread_mu) {
+          desc.doLocalCall(servant);
+        }
+        else {
+          // Main thread dispatch
+          MainThreadTask mtt(servant, desc,
+                             pd_mainthread_mu, pd_mainthread_cond);
+          int i = _OMNI_NS(orbAsyncInvoker)->insert(&mtt); OMNIORB_ASSERT(i);
+          mtt.wait();
+        }
+        callPostInvokeHook(hook);
       }
-      else {
-	// Main thread dispatch
-	MainThreadTask mtt(servant, desc,
-			   pd_mainthread_mu, pd_mainthread_cond);
-	int i = _OMNI_NS(orbAsyncInvoker)->insert(&mtt); OMNIORB_ASSERT(i);
-	mtt.wait();
+      catch (...) {
+        callPostInvokeHook(hook);
+        throw;
       }
     }
     else {
@@ -168,18 +180,23 @@ omniCallHandle::upcall(omniServant* servant, omniCallDescriptor& desc)
       stream.clearValueTracker();
 
       try {
-	PostInvoker postinvoker(pd_postinvoke_hook);
-
-	if (!pd_mainthread_mu) {
-	  desc.doLocalCall(servant);
-	}
-	else {
-	  // Main thread dispatch
-	  MainThreadTask mtt(servant, desc,
-			     pd_mainthread_mu, pd_mainthread_cond);
-	  int i = _OMNI_NS(orbAsyncInvoker)->insert(&mtt); OMNIORB_ASSERT(i);
-	  mtt.wait();
-	}
+        try {
+          if (!pd_mainthread_mu) {
+            desc.doLocalCall(servant);
+          }
+          else {
+            // Main thread dispatch
+            MainThreadTask mtt(servant, desc,
+                               pd_mainthread_mu, pd_mainthread_cond);
+            int i = _OMNI_NS(orbAsyncInvoker)->insert(&mtt); OMNIORB_ASSERT(i);
+            mtt.wait();
+          }
+          callPostInvokeHook(hook);
+        }
+        catch (...) {
+          callPostInvokeHook(hook);
+          throw;
+        }
 	stream.rewindPtrs();
 
 	desc.marshalReturnedValues(stream);
@@ -187,7 +204,7 @@ omniCallHandle::upcall(omniServant* servant, omniCallDescriptor& desc)
 
 	pd_call_desc->unmarshalReturnedValues(stream);
       }
-#ifdef HAS_Cplusplus_catch_exception_by_base
+#ifdef OMNI_HAS_Cplusplus_catch_exception_by_base
       catch (CORBA::UserException& ex) {
 	stream.rewindPtrs();
 	stream.clearValueTracker();
@@ -296,7 +313,7 @@ MainThreadTask::execute()
     _OMNI_NS(poaCurrentStackInsert) insert(&pd_desc);
     pd_desc.doLocalCall(pd_servant);
   }
-#ifdef HAS_Cplusplus_catch_exception_by_base
+#ifdef OMNI_HAS_Cplusplus_catch_exception_by_base
   catch (CORBA::Exception& ex) {
     pd_except = CORBA::Exception::_duplicate(&ex);
   }

@@ -71,7 +71,7 @@ CORBA::Boolean orbParameters::offerBiDirectionalGIOP = 0;
 ////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-#if defined(HAS_Cplusplus_Namespace) && defined(_MSC_VER)
+#if defined(OMNI_HAS_Cplusplus_Namespace) && defined(_MSC_VER)
 // MSVC++ does not give the variables external linkage otherwise. Its a bug.
 namespace BiDirPolicy {
 
@@ -407,7 +407,7 @@ BiDirServerRope::decrRefCount() {
     for (; p != &pd_strands; p = p->next) {
       giopStrand* g = (giopStrand*)p;
       if (g->state() != giopStrand::DYING) {
-	if (omniORB::trace(30)) {
+	if (omniORB::trace(25)) {
 	  omniORB::logger l;
 	  l << "Bi-directional rope is no longer referenced; strand "
 	    << (void*)g << " is a candidate for scavenging.\n";
@@ -485,6 +485,8 @@ BiDirClientRope::acquireClient(const omniIOR*      ior,
   if (!s.connection) {
     giopActiveConnection* c;
 
+    s.flags = s.flags | GIOPSTRAND_BIDIR;
+
     try {
       c = giop_c->openConnection();
     }
@@ -494,7 +496,6 @@ BiDirClientRope::acquireClient(const omniIOR*      ior,
     }
 
     // Make the connection managed by the giopServer.
-    s.flags = s.flags | GIOPSTRAND_BIDIR;
     s.gatekeeper_checked = 1;
     giopActiveCollection* watcher = c->registerMonitor();
     if (omniORB::trace(20)) {
@@ -751,7 +752,7 @@ public:
 			1,
 			"-ORBacceptBiDirectionalGIOP < 0 | 1 >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::Boolean v;
     if (!orbOptions::getBoolean(value,v)) {
@@ -780,7 +781,7 @@ public:
 			1,
 			"-ORBofferBiDirectionalGIOP < 0 | 1 >") {}
 
-  void visit(const char* value,orbOptions::Source) throw (orbOptions::BadParam) {
+  void visit(const char* value,orbOptions::Source) {
 
     CORBA::Boolean v;
     if (!orbOptions::getBoolean(value,v)) {

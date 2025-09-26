@@ -248,6 +248,12 @@ _CORBA_MODULE_BEG
     ~logger();
     // The destructor flushes the message.
 
+    struct unsafe {
+      // "unsafe" string that may contain non-printable characters
+      inline unsafe(const char* str) : s(str) {}
+      const char* s;
+    };
+    
     logger& operator<<(char c);
     logger& operator<<(unsigned char c) { return (*this) << (char)c; }
     logger& operator<<(signed char c) { return (*this) << (char)c; }
@@ -258,6 +264,7 @@ _CORBA_MODULE_BEG
     logger& operator<<(const signed char *s) {
       return (*this) << (const char*)s;
     }
+    logger& operator<<(const unsafe& us);
     logger& operator<<(const void *p);
     logger& operator<<(int n);
     logger& operator<<(unsigned int n);
@@ -265,10 +272,14 @@ _CORBA_MODULE_BEG
     logger& operator<<(unsigned long n);
     logger& operator<<(short n) {return operator<<((int)n);}
     logger& operator<<(unsigned short n) {return operator<<((unsigned int)n);}
-#ifdef HAS_Cplusplus_Bool
+#if defined(_MSC_VER) && defined(_WIN64)
+    logger& operator<<(__int64 n);
+    logger& operator<<(unsigned __int64 n);
+#endif
+#ifdef OMNI_HAS_Cplusplus_Bool
     logger& operator<<(bool b) { return operator<<((int)b); }
 #endif
-#ifndef NO_FLOAT
+#ifndef OMNI_NO_FLOAT
     logger& operator<<(double n);
     logger& operator<<(float n) { return operator<<((double)n); }
 #endif
@@ -607,13 +618,13 @@ _CORBA_MODULE_BEG
 #include <omniORB4/omniORBcompat.h>
 #undef  _INCLUDE_OMNIORBCOMPAT_
 
-#ifndef HAS_Cplusplus_Namespace
+#ifndef OMNI_HAS_Cplusplus_Namespace
   friend class omni;
   friend class CORBA;
 private:
 #endif
 
-#ifdef HAS_Cplusplus_catch_exception_by_base
+#ifdef OMNI_HAS_Cplusplus_catch_exception_by_base
 
 #  define _OMNIORB_EX_ONLY_CD(x)
 

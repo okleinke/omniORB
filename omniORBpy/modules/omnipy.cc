@@ -47,6 +47,7 @@ PyInterpreterState* omniPy::pyInterpreter;
 PyObject* omniPy::py_omnipymodule;	// The _omnipy extension
 PyObject* omniPy::py_pseudoFns;         //  pseudoFns
 PyObject* omniPy::py_policyFns;         //  policyFns
+PyObject* omniPy::py_callInfoFns;       //  callInfoFns
 PyObject* omniPy::pyCORBAmodule;	// The CORBA module
 PyObject* omniPy::pyCORBAsysExcMap;	//  The system exception map
 PyObject* omniPy::pyCORBAORBClass;	//  ORB class
@@ -207,7 +208,7 @@ extern "C" {
   }
 
 #define OMNIPY_ATTR(x) \
-  PyObject_GetAttrString(omniPy::pyomniORBmodule, (char*)x);
+  PyObject_GetAttrString(omniPy::pyomniORBmodule, (char*)x)
 
   static PyObject*
   omnipy_registerPyObjects(PyObject* self, PyObject* args)
@@ -668,6 +669,12 @@ extern "C" {
     PyDict_SetItemString(d, (char*)"policyFns", omniPy::py_policyFns);
     Py_DECREF(omniPy::py_policyFns);
 
+    // Empty dict for external transport modules to register
+    // additional call info functions.
+    omniPy::py_callInfoFns = PyDict_New();
+    PyDict_SetItemString(d, (char*)"callInfoFns", omniPy::py_callInfoFns);
+    Py_DECREF(omniPy::py_callInfoFns);
+
     // Codesets
     omniPy::ncs_c_utf_8 = omniCodeSet::getNCS_C("UTF-8");
 
@@ -703,8 +710,10 @@ extern "C" {
   PyMODINIT_FUNC
   PyInit__omnipy(void)
   {
+#if (PY_VERSION_HEX < 0x03070000)
     // Make sure Python is running multi-threaded
     PyEval_InitThreads();
+#endif
 
     PyObject* m = PyModule_Create(&omnipymodule);
     if (!m)

@@ -301,8 +301,13 @@ CORBA::Any::operator<<= (cdrStream& s)
   PR_clearData();
 
   grabTC(pd_tc, CORBA::TypeCode::unmarshalTypeCode(s));
-  pd_mbuf = new cdrAnyMemoryStream;
-  tcParser::copyStreamToStream(get(pd_tc), s, *pd_mbuf);
+
+  CORBA::TCKind kind = pd_tc->kind();
+
+  if (!(kind == CORBA::tk_void || kind == tk_null)) {
+    pd_mbuf = new cdrAnyMemoryStream;
+    tcParser::copyStreamToStream(get(pd_tc), s, *pd_mbuf);
+  }
 }
 
 // omniORB data-only marshalling functions
@@ -566,7 +571,7 @@ CORBA::Any::operator<<=(ULong u)
   u >>= *pd_mbuf;
 }
 
-#ifdef HAS_LongLong
+#ifdef OMNI_HAS_LongLong
 void
 CORBA::Any::operator<<=(LongLong l)
 {
@@ -587,7 +592,7 @@ CORBA::Any::operator<<=(ULongLong u)
 #endif
 
 
-#if !defined(NO_FLOAT)
+#if !defined(OMNI_NO_FLOAT)
 void
 CORBA::Any::operator<<=(Float f)
 {
@@ -606,7 +611,7 @@ CORBA::Any::operator<<=(Double d)
   d >>= *pd_mbuf;
 }
 
-#ifdef HAS_LongDouble
+#ifdef OMNI_HAS_LongDouble
 void
 CORBA::Any::operator<<=(LongDouble d)
 {
@@ -715,7 +720,7 @@ CORBA::Any::operator>>=(ULong& u) const
 }
 
 
-#ifdef HAS_LongLong
+#ifdef OMNI_HAS_LongLong
 CORBA::Boolean
 CORBA::Any::operator>>=(LongLong& l) const
 {
@@ -739,7 +744,7 @@ CORBA::Any::operator>>=(ULongLong& u) const
 #endif
 
 
-#if !defined(NO_FLOAT)
+#if !defined(OMNI_NO_FLOAT)
 CORBA::Boolean
 CORBA::Any::operator>>=(Float& f) const
 {
@@ -761,7 +766,7 @@ CORBA::Any::operator>>=(Double& d) const
   return 1;
 }
 
-#ifdef HAS_LongDouble
+#ifdef OMNI_HAS_LongDouble
 CORBA::Boolean
 CORBA::Any::operator>>=(LongDouble& d) const
 {
@@ -1420,7 +1425,7 @@ CORBA::Any::value() const
     // that this will result in invalid data if we contain a
     // valuetype, since valuetypes do not get marshalled into the
     // memory buffer like other types. This value() method was
-    // deprecated before valuetypes were specifified, so we consider
+    // deprecated before valuetypes were specified, so we consider
     // this an acceptable limitation.
     cdrAnyMemoryStream* mbuf = new cdrAnyMemoryStream;
 
@@ -1441,4 +1446,66 @@ CORBA::Any::value() const
     }
   }
   return snap_mbuf->bufPtr();
+}
+
+
+// Exception repository id
+void
+CORBA::Any::PR_marshalExceptionRepoId(cdrStream& s, const char* repo_id)
+{
+  // Exception value is preceeded by repository id, even though the id
+  // is in the TypeCode.
+  if (orbParameters::exceptionIdInAny)
+    s.marshalRawString(repo_id);
+}
+
+void
+CORBA::Any::PR_unmarshalExceptionRepoId(cdrStream& s)
+{
+  if (orbParameters::exceptionIdInAny) {
+    // We don't need the repository id. We just skip it.
+    CORBA::ULong len;
+    len <<= s;
+    s.skipInput(len);
+  }
+}
+
+void
+CORBA::Any::NP_unmarshalExceptionDataOnly(cdrStream& s)
+{
+  // Copy the data members of an exception, where the repository id is
+  // not in the source stream.
+  
+  PR_clearData();
+  pd_mbuf = new cdrAnyMemoryStream;
+
+  TypeCode_base* tc = TypeCode_indirect::strip(ToTcBase_Checked(get(pd_tc)));
+  OMNIORB_ASSERT(tc->NP_kind() == CORBA::tk_except);
+
+  PR_marshalExceptionRepoId(*pd_mbuf, tc->NP_id());
+
+  CORBA::ULong nmembers = tc->NP_member_count();
+
+  // Copy the individual elements.
+  for (CORBA::ULong i=0; i < nmembers; i++)
+    tcParser::copyStreamToStream(tc->NP_member_type(i), s, *pd_mbuf);
+}
+
+void
+CORBA::Any::NP_marshalExceptionDataOnly(cdrStream& s) const
+{
+  // Copy the data members of an exception, where the repository id
+  // should not be marshalled to the stream.
+
+  TypeCode_base* tc = TypeCode_indirect::strip(ToTcBase_Checked(get(pd_tc)));
+  OMNIORB_ASSERT(tc->NP_kind() == CORBA::tk_except);
+
+  cdrAnyMemoryStream src(PR_streamToRead(), 1);
+  PR_unmarshalExceptionRepoId(src);
+  
+  CORBA::ULong nmembers = tc->NP_member_count();
+
+  // Copy the individual elements.
+  for (CORBA::ULong i=0; i < nmembers; i++)
+    tcParser::copyStreamToStream(tc->NP_member_type(i), src, s);
 }

@@ -38,7 +38,7 @@
 Scope* Scope::global_  = 0;
 Scope* Scope::current_ = 0;
 
-int n_builtins = 0;
+static int n_builtins = 0;
 static Decl** builtins = 0;
 
 
@@ -97,7 +97,7 @@ toString(IDL_Boolean qualify) const
   for (f = scopeList_; f; f = f->next())
     i += strlen(f->identifier()) + 2;
 
-  char* str = new char [i-1];
+  char* str = new char [i > 2 ? i-1 : 1];
 
   if (qualify && absolute_) {
     str[0] = ':'; str[1] = ':';
@@ -644,7 +644,7 @@ findScopedName(const ScopedName* sn, const char* file, int line) const
 	    delete [] ssn;
 
 	    for (; el; el = el->tail()) {
-	      char* ssn = el->head()->container()->scopedName()->toString();
+	      ssn = el->head()->container()->scopedName()->toString();
 	      IdlErrorCont(el->head()->file(), el->head()->line(),
 			   "('%s' defined in '%s')",
 			   el->head()->identifier(), ssn);

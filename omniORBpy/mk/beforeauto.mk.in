@@ -42,15 +42,17 @@ endif
 # Directories for installation
 #
 
-prefix        	 := @prefix@
-exec_prefix   	 := @exec_prefix@
-INSTALLTARGET 	 := 1
-INSTALLINCDIR 	 := $(DESTDIR)@includedir@
-INSTALLBINDIR 	 := $(DESTDIR)@bindir@
-INSTALLLIBDIR 	 := $(DESTDIR)@libdir@
-INSTALLPYTHONDIR := $(DESTDIR)@pythondir@
-INSTALLPYEXECDIR := $(DESTDIR)@pyexecdir@
-INSTALLIDLDIR    := $(DESTDIR)@datadir@/idl
+prefix             := @prefix@
+exec_prefix        := @exec_prefix@
+PYTHON_PREFIX      := @prefix@
+PYTHON_EXEC_PREFIX := @exec_prefix@
+INSTALLTARGET      := 1
+INSTALLINCDIR      := $(DESTDIR)@includedir@
+INSTALLBINDIR      := $(DESTDIR)@bindir@
+INSTALLLIBDIR      := $(DESTDIR)@libdir@
+INSTALLPYTHONDIR   := $(DESTDIR)@pythondir@
+INSTALLPYEXECDIR   := $(DESTDIR)@pyexecdir@
+INSTALLIDLDIR      := $(DESTDIR)@datadir@/idl
 
 #############################################################################
 #
@@ -136,8 +138,10 @@ GENERATE_LIB_DEPEND = $(firstword \
 # make passed to this make will be incorrectly passed down to the sub-make.
 #
 
+OMNI_MAKEFLAGS = $(filter -j% --j%, $(MAKEFLAGS))
+
 define MakeSubdirs
-(unset MAKEFLAGS; \
+(MAKEFLAGS='$(OMNI_MAKEFLAGS)'; \
  set -e; \
  if [ "$$subdir_makeflags" = "" ]; then \
    subdir_makeflags='$(SUBDIR_MAKEFLAGS)'; \
@@ -537,6 +541,27 @@ OMNIORB_SSL_LIB += $(OPEN_SSL_LIB)
 OMNIORB_SSL_CPPFLAGS += $(OPEN_SSL_CPPFLAGS)
 
 
+# omniORB HTTP transport
+OMNIORB_HTTP_LIB = $(patsubst %,$(LibSearchPattern),\
+                     omnihttpTP$(OMNIORB_MAJOR_VERSION))
+
+lib_depend := $(patsubst %,$(LibPattern),omnihttpTP$(OMNIORB_MAJOR_VERSION))
+OMNIORB_HTTP_LIB_DEPEND := $(GENERATE_LIB_DEPEND)
+
+OMNIORB_HTTP_LIB += $(OMNIORB_SSL_LIB)
+OMNIORB_HTTP_CPPFLAGS += $(OPEN_SSL_CPPFLAGS)
+
+
+# omniORB HTTP Crypto library
+OMNIORB_HTTP_CRYPTO_LIB = $(patsubst %,$(LibSearchPattern),\
+                            omnihttpCrypto$(OMNIORB_MAJOR_VERSION))
+
+lib_depend := $(patsubst %,$(LibPattern),omnihttpCrypto$(OMNIORB_MAJOR_VERSION))
+OMNIORB_HTTP_LIB_DEPEND := $(GENERATE_LIB_DEPEND)
+
+OMNIORB_HTTP_CRYPTO_LIB += $(OMNIORB_HTTP_LIB)
+
+
 # ZIOP
 OMNIORB_ZIOP_LIB = $(patsubst %,$(LibSearchPattern),omniZIOP$(OMNIORB_MAJOR_VERSION))
 lib_depend := $(patsubst %,$(LibPattern),omniZIOP$(OMNIORB_MAJOR_VERSION))
@@ -744,6 +769,14 @@ ifeq (@ENABLE_ZIOP@,yes)
 EnableZIOP = 1
 endif
 
+#
+# Enable HTTP Crypto?
+#
+
+ifeq (@ENABLE_HTTP_CRYPTO@,yes)
+EnableHTTPCrypto = 1
+endif
+
 
 ###########################################################################
 #
@@ -781,7 +814,6 @@ endif
 
 ###################
 ifdef Linux
-IMPORT_CPPFLAGS += -D__linux__
 OMNITHREAD_POSIX_CPPFLAGS = -DNoNanoSleep -DPthreadDraftVersion=10
 OMNITHREAD_CPPFLAGS = -D_REENTRANT
 OMNITHREAD_LIB += -lpthread
@@ -803,7 +835,6 @@ endif
 
 ###################
 ifdef SunOS
-IMPORT_CPPFLAGS += -D__sunos__
 OMNITHREAD_POSIX_CPPFLAGS = -DPthreadDraftVersion=10
 OMNITHREAD_CPPFLAGS = -DUsePthread -D_REENTRANT $(CXXMTFLAG)
 SOCKET_LIB = -lsocket -lnsl
@@ -834,8 +865,6 @@ endif
 
 ###################
 ifdef OSF1
-IMPORT_CPPFLAGS          += -D__osf1__
-
 ifeq (@OSVERSION@,3)
 OMNITHREAD_POSIX_CPPFLAGS = -DPthreadDraftVersion=4 -DNoNanoSleep
 else
@@ -881,7 +910,6 @@ endif
 
 ###################
 ifdef HPUX
-IMPORT_CPPFLAGS += -D__hpux__
 INSTLIBFLAGS     = -m 0755
 
 ifeq (@OSVERSION@,10)
@@ -943,7 +971,6 @@ endif
 
 ###################
 ifdef NextStep
-IMPORT_CPPFLAGS += -D__nextstep__
 
 ThreadSystem = Mach
 OMNITHREAD_CPPFLAGS = -D_REENTRANT
@@ -955,8 +982,6 @@ endif
 
 ###################
 ifdef IRIX
-IMPORT_CPPFLAGS += -D__irix__
-
 OMNITHREAD_POSIX_CPPFLAGS = -DPthreadDraftVersion=10 \
 			    -DPthreadSupportThreadPriority
 OMNITHREAD_LIB += -lpthread
@@ -978,8 +1003,6 @@ endif
 ###################
 ifdef AIX
 ifndef Compiler_GCC		# Assuming XlC compiler
-
-IMPORT_CPPFLAGS += -D__aix__
 
 CMAKEDEPEND     += -D_AIX
 CXXMAKEDEPEND   += -D_AIX
@@ -1006,7 +1029,6 @@ endif
 
 ifdef Compiler_GCC
 
-IMPORT_CPPFLAGS += -D__aix__
 CMAKEDEPEND     += -D_AIX
 CXXMAKEDEPEND   += -D_AIX
 CXXLINKOPTIONS  += -Wl,-brtl -Wl,-blibpath:/lib:/usr/lib:$(prefix)/lib
@@ -1066,8 +1088,6 @@ endif	# AIX
 
 ###################
 ifdef Darwin
-IMPORT_CPPFLAGS += -D__darwin__
-
 OMNITHREAD_POSIX_CPPFLAGS = -DPthreadDraftVersion=10 \
                             -DPthreadSupportThreadPriority -DNoNanoSleep
 
@@ -1078,11 +1098,8 @@ SharedLibraryFullNameTemplate = lib$$1$$2.$$3.$$4.$(SHAREDLIB_SUFFIX)
 SharedLibrarySoNameTemplate = lib$$1$$2.$$3.$(SHAREDLIB_SUFFIX)
 SharedLibraryLibNameTemplate = lib$$1$$2.$(SHAREDLIB_SUFFIX)
 SharedLibraryPlatformLinkFlagsTemplate = -dynamiclib \
-                                         -install_name $(INSTALLLIBDIR)/$$soname \
-                                         -flat_namespace \
-                                         -undefined suppress
-PythonLibraryPlatformLinkFlagsTemplate = -bundle -flat_namespace \
-                                         -undefined suppress
+                                         -install_name $(INSTALLLIBDIR)/$(SharedLibraryFullNameTemplate)
+PythonLibraryPlatformLinkFlagsTemplate = -bundle -undefined dynamic_lookup
 PythonSHAREDLIB_SUFFIX = so
 
 
@@ -1105,8 +1122,6 @@ endif
 
 ###################
 ifdef FreeBSD
-IMPORT_CPPFLAGS += -D__freebsd__
-
 OMNITHREAD_CPPFLAGS = -D_REENTRANT -D_THREAD_SAFE
 OMNITHREAD_POSIX_CPPFLAGS = -DUsePthread -DPthreadDraftVersion=10
 OMNITHREAD_LIB += -pthread
@@ -1114,8 +1129,6 @@ endif
 
 ###################
 ifdef NetBSD
-IMPORT_CPPFLAGS += -D__netbsd__
-
 OMNITHREAD_CPPFLAGS = -D_REENTRANT
 OMNITHREAD_POSIX_CPPFLAGS = -DUsePthread -DPthreadDraftVersion=10
 OMNITHREAD_LIB += -pthread
@@ -1123,8 +1136,6 @@ endif
 
 ###################
 ifdef OpenBSD
-IMPORT_CPPFLAGS += -D__openbsd__
-
 OMNITHREAD_CPPFLAGS = -D_REENTRANT -D_THREAD_SAFE
 OMNITHREAD_POSIX_CPPFLAGS = -DUsePthread -DPthreadDraftVersion=10
 OMNITHREAD_LIB += -pthread
@@ -1132,8 +1143,6 @@ endif
 
 ###################
 ifdef OSR5
-IMPORT_CPPFLAGS += -D__osr5__
-
 COPTIONS = -fpcc-struct-return
 
 OMNITHREAD_POSIX_CPPFLAGS = -DPthreadDraftVersion=6 \
@@ -1145,7 +1154,6 @@ ifdef Cygwin
 MKDIRHIER = mkdir -p
 extralibs += -L$(PYPREFIX)/lib/python$(PYVERSION)/config \
  -lpython$(PYVERSION).dll
-IMPORT_CPPFLAGS += -D__cygwin__
 SHAREDLIB_CPPFLAGS =
 OMNITHREAD_POSIX_CPPFLAGS = -DNoNanoSleep -DPthreadDraftVersion=10
 OMNITHREAD_CPPFLAGS = -D_REENTRANT
@@ -1187,57 +1195,6 @@ SharedLibraryFullNameTemplate = lib$$1$$2.$(SHAREDLIB_SUFFIX).$$3.$$4
 SharedLibrarySoNameTemplate   = lib$$1$$2.$(SHAREDLIB_SUFFIX).$$3
 SharedLibraryLibNameTemplate  = lib$$1$$2.$(SHAREDLIB_SUFFIX)
 
-endif
-
-
-
-###########################################################################
-#
-# Processor
-#
-
-ifdef x86Processor
-IMPORT_CPPFLAGS += -D__x86__
-endif
-
-ifdef x8664Processor
-IMPORT_CPPFLAGS += -D__x86_64__
-endif
-
-ifdef SparcProcessor
-IMPORT_CPPFLAGS += -D__sparc__
-endif
-
-ifdef AlphaProcessor
-IMPORT_CPPFLAGS += -D__alpha__
-endif
-
-ifdef m68kProcessor
-IMPORT_CPPFLAGS += -D__m68k__
-endif
-
-ifdef IndigoProcessor
-IMPORT_CPPFLAGS += -D__mips__
-endif
-
-ifdef ArmProcessor
-IMPORT_CPPFLAGS += -D__arm__
-endif
-
-ifdef s390Processor
-IMPORT_CPPFLAGS += -D__s390__
-endif
-
-ifdef ia64Processor
-IMPORT_CPPFLAGS += -D__ia64__
-endif
-
-ifdef HppaProcessor
-IMPORT_CPPFLAGS += -D__hppa__
-endif
-
-ifdef PowerPCProcessor
-IMPORT_CPPFLAGS += -D__powerpc__
 endif
 
 

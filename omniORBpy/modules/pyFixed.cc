@@ -245,7 +245,7 @@ extern "C" {
     case Py_GT: r = cmp >  0; break;
     case Py_GE: r = cmp >= 0; break;
     default:    r = 0;
-    };
+    }
     
     PyObject* r_o = r ? Py_True : Py_False;
     Py_INCREF(r_o);
@@ -396,7 +396,7 @@ extern "C" {
   fixed_int(PyObject* v)
   {
     try {
-#ifdef HAS_LongLong
+#ifdef OMNI_HAS_LongLong
       CORBA::LongLong ll = *((omnipyFixedObject*)v)->ob_fixed;
       if (ll > _CORBA_LONGLONG_CONST(2147483647) ||
 	  ll < _CORBA_LONGLONG_CONST(-2147483648))

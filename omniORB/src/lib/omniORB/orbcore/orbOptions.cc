@@ -106,7 +106,7 @@ orbOptions::reset() {
 
 ////////////////////////////////////////////////////////////////////////
 void
-orbOptions::visit() throw(orbOptions::BadParam) {
+orbOptions::visit() {
 
   omnivector<HandlerValuePair*>::iterator i = pd_values.begin();
   omnivector<HandlerValuePair*>::iterator last = pd_values.end();
@@ -120,8 +120,7 @@ orbOptions::visit() throw(orbOptions::BadParam) {
 void
 orbOptions::addOption(const char* key,
 		      const char* value,
-		      orbOptions::Source source) throw (orbOptions::Unknown,
-							orbOptions::BadParam) {
+		      orbOptions::Source source) {
 
   if (!pd_handlers_sorted) sortHandlers();
 
@@ -148,8 +147,7 @@ orbOptions::addOption(const char* key,
 
 ////////////////////////////////////////////////////////////////////////
 void
-orbOptions::addOptions(const char* options[][2]) throw (orbOptions::Unknown,
-							orbOptions::BadParam) {
+orbOptions::addOptions(const char* options[][2]) {
 
   for (int i=0; options[i][0]; i++) {
     addOption(options[i][0],options[i][1],fromArray);
@@ -170,8 +168,7 @@ orbOptions::move_args(int& argc,char **argv,int idx,int nargs)
 
 ////////////////////////////////////////////////////////////////////////
 void
-orbOptions::extractInitOptions(int& argc,char** argv) 
-  throw (orbOptions::Unknown,orbOptions::BadParam) {
+orbOptions::extractInitOptions(int& argc,char** argv) {
 
   if (!pd_handlers_sorted) sortHandlers();
 
@@ -235,8 +232,7 @@ orbOptions::extractInitOptions(int& argc,char** argv)
 
 ////////////////////////////////////////////////////////////////////////
 void
-orbOptions::getTraceLevel(int argc, char** argv)
-  throw (orbOptions::Unknown,orbOptions::BadParam) {
+orbOptions::getTraceLevel(int argc, char** argv) {
 
   int i;
   for (i=0; i<argc; i++) {
@@ -278,8 +274,7 @@ orbOptions::getTraceLevel(int argc, char** argv)
 
 ////////////////////////////////////////////////////////////////////////
 const char*
-orbOptions::getConfigFileName(int argc, char** argv, const char* fname)
-  throw (orbOptions::Unknown,orbOptions::BadParam) {
+orbOptions::getConfigFileName(int argc, char** argv, const char* fname) {
 
   for (int i=0; i<argc; i++) {
     if (!strcmp(argv[i], "-ORBconfigFile")) {
@@ -296,7 +291,7 @@ orbOptions::getConfigFileName(int argc, char** argv, const char* fname)
 
 ////////////////////////////////////////////////////////////////////////
 void
-orbOptions::importFromEnv() throw (orbOptions::Unknown,orbOptions::BadParam) {
+orbOptions::importFromEnv() {
   
   if (!pd_handlers_sorted) sortHandlers();
 
@@ -432,8 +427,10 @@ CORBA::Boolean
 orbOptions::getULong(const char* value, CORBA::ULong& result) {
 
   unsigned long v;
-  v = strtoul(value,0,10);
-  if (v == ULONG_MAX && errno == ERANGE) return 0;
+  char* end;
+  errno = 0;
+  v = strtoul(value, &end, 10);
+  if (errno == ERANGE || end == value) return 0;
   result = v;
   return 1;
 }
@@ -443,10 +440,36 @@ CORBA::Boolean
 orbOptions::getLong(const char* value, CORBA::Long& result) {
 
   long v;
-  v = strtol(value,0,10);
-  if (v == LONG_MAX && errno == ERANGE) return 0;
+  char* end;
+  errno = 0;
+  v = strtol(value, &end, 10);
+  if (errno == ERANGE || end == value) return 0;
   result = v;
   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////
+CORBA::Boolean
+orbOptions::getSizeT(const char* value, size_t& result) {
+
+#if defined (_WIN64)
+  unsigned __int64 v;
+  char* end;
+  errno = 0;
+  v = _strtoui64(value, &end, 10);
+  if (errno == ERANGE || end == value) return 0;
+  result = v;
+  return 1;
+
+#else
+  size_t v;
+  char* end;
+  errno = 0;
+  v = strtoul(value, &end, 10);
+  if (errno == ERANGE || end == value) return 0;
+  result = v;
+  return 1;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -469,7 +492,7 @@ orbOptions::addKVBoolean(const char* key, CORBA::Boolean value,
 ////////////////////////////////////////////////////////////////////////
 void
 orbOptions::addKVULong(const char* key, CORBA::ULong value,
-			 orbOptions::sequenceString& result) {
+                       orbOptions::sequenceString& result) {
 
   CORBA::String_var kv;
   CORBA::ULong l;
@@ -494,6 +517,28 @@ orbOptions::addKVLong(const char* key, CORBA::Long value,
   l = strlen(key) + 16;
   kv = CORBA::string_alloc(l);
   sprintf(kv,"%s = %ld",key,(long)value);
+
+  l = result.length();
+  result.length(l+1);
+  result[l] = kv._retn();
+}
+
+////////////////////////////////////////////////////////////////////////
+void
+orbOptions::addKVSizeT(const char* key, size_t value,
+                       orbOptions::sequenceString& result) {
+
+  CORBA::String_var kv;
+  CORBA::ULong l;
+
+  l = strlen(key) + 26;
+  kv = CORBA::string_alloc(l);
+
+#if defined (_WIN64)
+  sprintf(kv,"%s = %I64u",key,(unsigned __int64)value);
+#else
+  sprintf(kv,"%s = %lu",key,(unsigned long)value);
+#endif
 
   l = result.length();
   result.length(l+1);

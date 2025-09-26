@@ -191,6 +191,7 @@ omniServerRequest::set_exception(const CORBA::Any& value)
       }
       pd_state = SR_DSI_ERROR;
     }
+    // falls through
   case SR_DSI_ERROR:
     OMNIORB_THROW(BAD_INV_ORDER,
 		  BAD_INV_ORDER_ErrorInDynamicImplementation,
@@ -257,7 +258,7 @@ public:
   }
 
   void _NP_marshal(cdrStream& s) const {
-    value.NP_marshalDataOnly(s);
+    value.NP_marshalExceptionDataOnly(s);
   }
 
 private:

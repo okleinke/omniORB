@@ -1,56 +1,82 @@
 RELEASE NOTES
 =============
 
-This is omniORB 4.2.3
+This is omniORB 4.3.3
 
 See README.unix.txt or README.win32.txt for building instructions.
 See the documentation in the doc directory for more information.
 
 
-Changes since omniORB 4.2.2
+Changes since omniORB 4.3.2
 ---------------------------
 
-omniORB 4.2.3 is primarily a bug fix release. See update.log for full
-details of changes. Highlights include:
+omniORB 4.3.3 is a bugfix release. See update.log for full details of
+changes. Highlights include:
 
- - New retainAddressOrder and resolveNamesForTransportRules options.
+ - Changes to avoid OpenSSL deprecation warnings.
 
- - Experimental support for Mac / iOS CFNetwork connections.
-
- - Fixed a lock order violation that could lead to a deadlock if
-   multiple connections were being opened and closed simultaneously in
-   thread pool mode.
+ - Ability to call ORB_init again after it fails.
 
 
-Changes since omniORB 4.2.1
+Changes since omniORB 4.3.1
 ---------------------------
 
-omniORB 4.2.2 is primarily a bug fix release. See update.log for full
+omniORB 4.3.2 is mainly a bugfix release. See update.log for full
 details of changes. Highlights include:
 
- - Support for cross-compilation using the configure script.
+ - Fixed two cases of crashes due to invalid GIOP sent by buggy or
+   malicious clients.
 
- - New defaultCharCodeSet and defaultWCharCodeSet configuration
-   parameters to handle code set conversion with corbaloc URIs and
-   badly-behaved servers.
-
- - Suppression of many compiler warnings.
+ - Other minor bug fixes.
 
 
-Changes since omniORB 4.2.0
+Changes since omniORB 4.3.0
 ---------------------------
 
-omniORB 4.2.1 is primarily a bug fix release. See update.log for full
-details of changes. Highlights include:
+omniORB 4.3.1 is mainly a bugfix release, with minor new features.
 
- - Improved Python 3 support.
+ - On Windows, support Python being installed in a path containing
+   spaces.
 
- - Additional SSL / TLS options.
+ - Support for building with Python 3.12 and later.
 
- - The default DH parameters for TLS are now 2048 bits.
+ - Miscellaneous bug fixes. See update.log for details.
 
- - More efficient marshalling of messages including large numbers of
-   valuetypes.
+
+Changes since omniORB 4.2.x
+---------------------------
+
+omniORB 4.3 has a number of new features and changes:
+
+ - A new omniORB-specific HTTP / HTTPS transport, with a number of
+   capabilities:
+
+    . Full encapsulation of GIOP messages in HTTP.
+
+    . Support for web proxies, transparent web proxies, reverse proxies.
+
+    . For cases where security is important but an end-to-end HTTPS
+      connection cannot be assured, support for in-message encryption.
+
+ - New Connection Info callback to receive information about
+   connection establishment and errors.
+
+ - New plain object keys POA policy, extending the capabilities of
+   omniINSPOA.
+
+ - Support for vast CORBA messages on 64 bit platforms.
+
+ - Support for PyPy in omniidl and omniORBpy.
+
+ - omniCallDescriptor::current() and omniCallHandle::current() to
+   access information about the current call on a server.
+
+ - The sslContext class is now in the omni namespace.
+
+ - The marshalled format of exceptions inside Anys has changed for
+   compatibility with other ORBs, meaning that it is incompatible with
+   omniORB versions prior to 4.3. See the exceptionIdInAny
+   configuration parameter to revert to the previous format.
 
 
 Changes since omniORB 4.1.x
